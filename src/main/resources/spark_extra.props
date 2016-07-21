@@ -1,0 +1,12 @@
+spark.kryoserializer.buffer.max.mb 1024
+spark.executor.memory   1536m
+spark.serializer        org.apache.spark.serializer.KryoSerializer
+spark.executor.cores 1 
+
+
+spark.eventLog.enabled    true
+# spark.eventLog.dir        hdfs:///user/spark/applicationHistory/
+# Set spark executor memory
+#spark.executor.memory     2g
+spark.logConf             true
+
