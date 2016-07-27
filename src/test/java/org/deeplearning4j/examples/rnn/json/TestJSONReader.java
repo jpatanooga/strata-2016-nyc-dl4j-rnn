@@ -115,6 +115,7 @@ public class TestJSONReader {
 			
 			BeerReview b = objectMapper.readValue( beer_review.toString(), BeerReview.class );
 			
+			
 			System.out.println("review: " + b.text );
 			System.out.println("\tuser: " + b.user );
 			System.out.println("\trating overall: " + b.rating_overall );
