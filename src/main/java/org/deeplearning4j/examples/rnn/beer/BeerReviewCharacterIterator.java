@@ -13,6 +13,8 @@ import java.util.NoSuchElementException;
 import java.util.Random;
 
 import org.deeplearning4j.datasets.iterator.DataSetIterator;
+import org.deeplearning4j.examples.rnn.beer.schema.json.BeerReview;
+import org.deeplearning4j.examples.rnn.beer.schema.json.BeerReviewReader;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
@@ -31,6 +33,11 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	private Random rng;
 	private final int numCharacters;
 	private final boolean alwaysStartAtNewLine;
+	
+	// account for beer review rating columns
+	int extraRatingColumns = 5;
+	
+	BeerReviewReader reviewReader = null;
 	
 	public BeerReviewCharacterIterator(String path, int miniBatchSize, int exampleSize, int numExamplesToFetch ) throws IOException {
 		this(path,Charset.defaultCharset(),miniBatchSize,exampleSize,numExamplesToFetch,getDefaultCharacterSet(), new Random(),true);
@@ -67,10 +74,19 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		
 		//Load file and convert contents to a char[] 
 		boolean newLineValid = charToIdxMap.containsKey('\n');
+		
+		/*
 		List<String> lines = Files.readAllLines(new File(textFilePath).toPath(),textFileEncoding);
+		
 		int maxSize = lines.size();	//add lines.size() to account for newline characters at end of each line 
-		for( String s : lines ) maxSize += s.length();
+		for( String s : lines ) { 
+			maxSize += s.length();
+		}
+		
+		// create array to contain all lines -> characters 
 		char[] characters = new char[maxSize];
+		
+		// for each line, convert into array
 		int currIdx = 0;
 		for( String s : lines ){
 			char[] thisLine = s.toCharArray();
@@ -90,8 +106,15 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				+" cannot exceed number of valid characters in file ("+fileCharacters.length+")");
 		
 		int nRemoved = maxSize - fileCharacters.length;
-		System.out.println("Loaded and converted file: " + fileCharacters.length + " valid characters of "
-		+ maxSize + " total characters (" + nRemoved + " removed)");
+		*/
+		
+		// TODO: init reader
+		this.reviewReader = new BeerReviewReader( textFilePath );
+		this.reviewReader.init();
+		
+		
+	//	System.out.println("Loaded and converted file: " + fileCharacters.length + " valid characters of "
+	//	+ maxSize + " total characters (" + nRemoved + " removed)");
 	}
 	
 	/** A minimal character set, with a-z, A-Z, 0-9 and common punctuation etc */
@@ -141,38 +164,111 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		return next(miniBatchSize);
 	}
 
-	public DataSet next(int num) {
-		if( examplesSoFar+num > numExamplesToFetch ) throw new NoSuchElementException();
-		//Allocate space:
-		INDArray input = Nd4j.zeros(new int[]{num,numCharacters,exampleLength});
-		INDArray labels = Nd4j.zeros(new int[]{num,numCharacters,exampleLength});
+	private char[] convertReviewToCharacters( BeerReview br ) {
 		
-		int maxStartIdx = fileCharacters.length - exampleLength;
+		
+		
+		// for each line, convert into array
+		int currIdx = 0;
+		char[] thisLine = br.text.toCharArray(); //s.toCharArray();
+		
+		char[] characters = new char[ thisLine.length ];
+		
+		for( int i=0; i< thisLine.length; i++ ){
+			if( !charToIdxMap.containsKey(thisLine[i]) ) {
+				continue;
+			}
+			characters[currIdx++] = thisLine[i];
+		}
+		
+		return characters;
+		
+	}
+	
+	
+	/**
+	 * main method to produce vectors to modeling algorithm / workflow
+	 * 
+	 * 
+	 * TODO:
+	 * 		-	add columns for: { 
+					public float rating_overall = 0.0f;
+					public float rating_taste = 0.0f;
+					public float rating_appearance = 0.0f;
+					public float rating_palate = 0.0f;
+					public float rating_aroma = 0.0f;
+	 * 
+	 *		-	 
+	 * 
+	 * 
+	 */
+	public DataSet next(int miniBatchSize) {
+		
+		if( examplesSoFar+miniBatchSize > numExamplesToFetch ) {
+			throw new NoSuchElementException();
+		}
+		
+		
+		
+		int inputColumnCount = numCharacters + extraRatingColumns;
+		int outputColumnCount = numCharacters;
+		
+		//Allocate space: { mini-batch size, number columns, number timesteps }
+		INDArray input = Nd4j.zeros(new int[]{ miniBatchSize, inputColumnCount, exampleLength });
+		INDArray labels = Nd4j.zeros(new int[]{ miniBatchSize, outputColumnCount, exampleLength });
+		
+		// TODO: at this point we probably need to consider moving the beer review into the fileCharacters array
+		
+		
+//		int maxStartIdx = fileCharacters.length - exampleLength;
 		
 		//Randomly select a subset of the file. No attempt is made to avoid overlapping subsets
 		// of the file in the same minibatch
-		for( int i=0; i<num; i++ ){
-			int startIdx = (int) (rng.nextDouble()*maxStartIdx);
+		for( int i=0; i < miniBatchSize; i++ ){
+			
+			// we have to get each review separately
+			
+			BeerReview br = null;
+			
+			try {
+				br = this.reviewReader.getNextReview();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			System.out.println( br.text );
+			
+			fileCharacters = this.convertReviewToCharacters( br );
+			
+			
+			int startIdx = 0; //(int) (rng.nextDouble()*maxStartIdx);
 			int endIdx = startIdx + exampleLength;
 			int scanLength = 0;
-			if(alwaysStartAtNewLine){
+/*			if(alwaysStartAtNewLine){
 				while(startIdx >= 1 && fileCharacters[startIdx-1] != '\n' && scanLength++ < MAX_SCAN_LENGTH ){
 					startIdx--;
 					endIdx--;
 				}
 			}
-			
+	*/		
 			int currCharIdx = charToIdxMap.get(fileCharacters[startIdx]);	//Current input
 			int c=0;
+			
 			for( int j=startIdx+1; j<=endIdx; j++, c++ ){
 				int nextCharIdx = charToIdxMap.get(fileCharacters[j]);		//Next character to predict
 				input.putScalar(new int[]{i,currCharIdx,c}, 1.0);
 				labels.putScalar(new int[]{i,nextCharIdx,c}, 1.0);
 				currCharIdx = nextCharIdx;
+				
+				System.out.println( fileCharacters[j-1] + " -> " + currCharIdx );
+				
 			}
+			
+			
 		}
 		
-		examplesSoFar += num;
+		examplesSoFar += miniBatchSize;
 		return new DataSet(input,labels);
 	}
 
@@ -181,7 +277,7 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	}
 
 	public int inputColumns() {
-		return numCharacters;
+		return numCharacters + extraRatingColumns;
 	}
 
 	public int totalOutcomes() {

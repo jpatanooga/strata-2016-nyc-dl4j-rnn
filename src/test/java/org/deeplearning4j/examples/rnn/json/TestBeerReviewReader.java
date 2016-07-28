@@ -19,7 +19,7 @@ public class TestBeerReviewReader {
 		BeerReviewReader reader = new BeerReviewReader( pathToTestData );
 		reader.init();
 		
-		for ( int x = 0; x < 1000; x++ ) {
+		for ( int x = 0; x < 100; x++ ) {
 		
 			BeerReview b = reader.getNextReview();
 		
