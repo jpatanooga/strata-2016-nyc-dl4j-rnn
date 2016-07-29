@@ -2,6 +2,7 @@ package org.deeplearning4j.examples.rnn.beer.schema.json;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
@@ -10,12 +11,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class BeerReviewReader {
 
 	public String strDataPath = "";
+	int count = 0;
 	
 	Iterator<JsonNode> reviewJsonElementIterator = null;
 	ObjectMapper jacksonJSONObjectMapper = null;
@@ -24,6 +27,10 @@ public class BeerReviewReader {
 		
 		this.strDataPath = strJSONDataPath;
 		
+	}
+	
+	public int getCount() {
+		return count;
 	}
 	
 	public void init() throws IOException {
@@ -52,7 +59,38 @@ public class BeerReviewReader {
 		JsonNode list = root_iter.next();
 		
 		this.reviewJsonElementIterator = list.elements();
+		
+		
 				
+		
+	}
+	
+	public int countReviews() throws JsonProcessingException, IOException {
+		
+		BufferedReader br = new BufferedReader(new InputStreamReader( new FileInputStream( this.strDataPath )));
+		
+		ObjectMapper countJacksonJSONObjectMapper = new ObjectMapper();
+		
+		
+//		this.jacksonJSONObjectMapper.readTree( br );
+		
+		com.fasterxml.jackson.databind.JsonNode rootNode = countJacksonJSONObjectMapper.readTree( br ); //this.jacksonJSONObjectMapper.readTree( jsonData );
+		
+		Iterator<JsonNode> root_iter = rootNode.elements();
+		
+		JsonNode list = root_iter.next();
+		
+		Iterator<JsonNode> iterTmp = reviewJsonElementIterator = list.elements();	
+		int countTmp = 0;
+		
+		while (iterTmp.hasNext()) {
+			
+			countTmp++;
+			//JsonNode beer_review = 
+			iterTmp.next();
+		}
+		
+		return countTmp;
 		
 	}
 	
@@ -60,7 +98,19 @@ public class BeerReviewReader {
 		
 		JsonNode beer_review = this.reviewJsonElementIterator.next();
 		BeerReview b = this.jacksonJSONObjectMapper.readValue( beer_review.toString(), BeerReview.class );
-			
+		
+		//this.jacksonJSONObjectMapper.
+		
+		this.count++;
+		
+		while (b.text.length() < 1) {
+			System.err.println( "Skipped empty review at count: " + this.count );
+			beer_review = this.reviewJsonElementIterator.next();
+			b = this.jacksonJSONObjectMapper.readValue( beer_review.toString(), BeerReview.class );
+			this.count++;
+		}
+		
+		
 			
 		//	System.out.println("review: " + b.text );
 		//	System.out.println("\tuser: " + b.user );
@@ -68,6 +118,12 @@ public class BeerReviewReader {
 			
 
 		return b;
+		
+	}
+	
+	public boolean hasNext() {
+		
+		return this.reviewJsonElementIterator.hasNext();
 		
 	}
 	

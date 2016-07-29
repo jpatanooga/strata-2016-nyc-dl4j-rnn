@@ -27,5 +27,6 @@ public class BeerReview {
 	public float rating_aroma = 0.0f;
 	public String user = "";
 	
+	// todo: added beer ID
 
 }

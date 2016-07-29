@@ -27,11 +27,11 @@ public class LSTMBeerReviewModelingExample {
 	public static void main( String[] args ) throws Exception {
 		int lstmLayerSize = 200;					//Number of units in each GravesLSTM layer
 		int miniBatchSize = 32;						//Size of mini batch to use when  training
-		int examplesPerEpoch = 50 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
+		int examplesPerEpoch = 10 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
 		int exampleLength = 100;					//Length of each training example
-		int numEpochs = 30;							//Total number of training + sample generation epochs
+		int numEpochs = 10;							//Total number of training + sample generation epochs
 		int nSamplesToGenerate = 4;					//Number of samples to generate after each training epoch
-		int nCharactersToSample = 300;				//Length of each sample to generate
+		int nCharactersToSample = 100;				//Length of each sample to generate
 		String generationInitialization = null;		//Optional character initialization; a random character is used if null
 		// Above is Used to 'prime' the LSTM with a character sequence to continue/complete.
 		// Initialization characters must all be in CharacterIterator.getMinimalCharacterSet() by default
@@ -165,6 +165,98 @@ public class LSTMBeerReviewModelingExample {
 				miniBatchSize, exampleLength, examplesPerEpoch, validCharacters, new Random(12345),true);
 	}
 	*/
+	
+	
+	// TODO: sampleBeerReview 
+	// 			include: { ratings ..., user, beer type }
+/*
+ * 
+					public float rating_overall = 0.0f;
+					public float rating_taste = 0.0f;
+					public float rating_appearance = 0.0f;
+					public float rating_palate = 0.0f;
+					public float rating_aroma = 0.0f;
+
+ * 	
+ */
+	private static String[] sampleBeerRatingFromNetwork( String initialization, MultiLayerNetwork net,
+			BeerReviewCharacterIterator iter, Random rng, int charactersToSample, int numSamples, 
+			float rating_overall, float rating_taste, float rating_appearance, float rating_palate, float rating_aroma ){
+	
+	
+
+		
+		
+		//Set up initialization. If no initialization: use a random character
+		if( initialization == null ){
+			initialization = String.valueOf(iter.getRandomCharacter());
+		}
+		
+		
+		
+		//Create input for initialization
+		INDArray initializationInput = Nd4j.zeros(numSamples, iter.inputColumns(), initialization.length());
+		char[] init = initialization.toCharArray();
+		
+		// for each timestep we want to generate a character
+		for( int charTimestep = 0; charTimestep < init.length; charTimestep++ ){
+		
+			// get the column index for the current character
+			int col_idx = iter.convertCharacterToIndex( init[ charTimestep ] );
+			
+			// for each sample
+			for( int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++ ){
+			
+				initializationInput.putScalar(new int[]{ sampleIndex, col_idx, charTimestep }, 1.0f);
+			
+			}
+			
+		}
+		
+		// TODO: here is where we need to add in ratings for generation hints
+		
+		
+		
+		
+		
+		// TODO: end ratings hints in input array
+		
+		
+		StringBuilder[] sb = new StringBuilder[numSamples];
+		
+		for ( int i = 0; i < numSamples; i++ ) {
+		
+			sb[ i ] = new StringBuilder( initialization );
+		
+		}
+		
+		//Sample from network (and feed samples back into input) one character at a time (for all samples)
+		//Sampling is done in parallel here
+		net.rnnClearPreviousState();
+		INDArray output = net.rnnTimeStep( initializationInput );
+		output = output.tensorAlongDimension(output.size(2)-1,1,0);	//Gets the last time step output
+		
+		for( int i=0; i<charactersToSample; i++ ){
+			//Set up next input (single time step) by sampling from previous output
+			INDArray nextInput = Nd4j.zeros(numSamples,iter.inputColumns());
+			//Output is a probability distribution. Sample from this for each example we want to generate, and add it to the new input
+			for( int s=0; s<numSamples; s++ ){
+				double[] outputProbDistribution = new double[iter.totalOutcomes()];
+				for( int j=0; j<outputProbDistribution.length; j++ ) outputProbDistribution[j] = output.getDouble(s,j);
+				int sampledCharacterIdx = sampleFromDistribution(outputProbDistribution,rng);
+				
+				nextInput.putScalar(new int[]{s,sampledCharacterIdx}, 1.0f);		//Prepare next time step input
+				sb[s].append(iter.convertIndexToCharacter(sampledCharacterIdx));	//Add sampled character to StringBuilder (human readable output)
+			}
+			
+			output = net.rnnTimeStep(nextInput);	//Do one time step of forward pass
+		}
+		
+		String[] out = new String[numSamples];
+		for( int i=0; i<numSamples; i++ ) out[i] = sb[i].toString();
+		return out;
+	}
+	
 	
 	/** Generate a sample from the network, given an (optional, possibly null) initialization. Initialization
 	 * can be used to 'prime' the RNN with a sequence you want to extend/continue.<br>

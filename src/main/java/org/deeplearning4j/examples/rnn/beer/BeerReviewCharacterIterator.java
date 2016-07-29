@@ -110,6 +110,12 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		
 		// TODO: init reader
 		this.reviewReader = new BeerReviewReader( textFilePath );
+		
+		int c = this.reviewReader.countReviews();
+		
+		System.out.println("found reviews: " + c);
+		
+		
 		this.reviewReader.init();
 		
 		
@@ -185,6 +191,27 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		
 	}
 	
+
+	/**
+	 * TODO: how do we handle this for different type review hints per mini-batch entry?
+	 * 
+	 * @param ndArray
+	 * @param rating_overall
+	 * @param rating_taste
+	 * @param rating_appearance
+	 * @param rating_palate
+	 * @param rating_aroma
+	 */
+	public void setReviewHints( INDArray ndArray, float rating_overall, float rating_taste, float rating_appearance, float rating_palate, float rating_aroma) {
+		/*
+		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset, characterTimeStep }, rating_appearance );
+		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 1, characterTimeStep }, rating_aroma );
+		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 2, characterTimeStep }, rating_overall );
+		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 3, characterTimeStep }, rating_palate );
+		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 4, characterTimeStep }, rating_taste );
+		*/
+		
+	}
 	
 	/**
 	 * main method to produce vectors to modeling algorithm / workflow
@@ -224,7 +251,7 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		
 		//Randomly select a subset of the file. No attempt is made to avoid overlapping subsets
 		// of the file in the same minibatch
-		for( int i=0; i < miniBatchSize; i++ ){
+		for( int miniBatchIndex = 0; miniBatchIndex < miniBatchSize; miniBatchIndex++ ){
 			
 			// we have to get each review separately
 			
@@ -232,19 +259,28 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			
 			try {
 				br = this.reviewReader.getNextReview();
+				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			
-			System.out.println( br.text );
+			//System.out.println( br.text );
 			
 			fileCharacters = this.convertReviewToCharacters( br );
 			
+			if (fileCharacters.length < 10) {
+				System.err.println( "Small review text length! [count: " + this.reviewReader.getCount() + "]" );
+				System.err.println( "Text: " + br.text );
+				
+			}
 			
 			int startIdx = 0; //(int) (rng.nextDouble()*maxStartIdx);
 			int endIdx = startIdx + exampleLength;
-			int scanLength = 0;
+			if (endIdx > fileCharacters.length - 1) {
+				endIdx = fileCharacters.length - 1;
+			}
+			//int scanLength = 0;
 /*			if(alwaysStartAtNewLine){
 				while(startIdx >= 1 && fileCharacters[startIdx-1] != '\n' && scanLength++ < MAX_SCAN_LENGTH ){
 					startIdx--;
@@ -252,21 +288,50 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				}
 			}
 	*/		
-			int currCharIdx = charToIdxMap.get(fileCharacters[startIdx]);	//Current input
-			int c=0;
+			//System.out.println( "debug> startIdx: " + startIdx + ", endIdx: " + endIdx );
 			
-			for( int j=startIdx+1; j<=endIdx; j++, c++ ){
-				int nextCharIdx = charToIdxMap.get(fileCharacters[j]);		//Next character to predict
-				input.putScalar(new int[]{i,currCharIdx,c}, 1.0);
-				labels.putScalar(new int[]{i,nextCharIdx,c}, 1.0);
+			int currCharIdx = charToIdxMap.get( fileCharacters[ startIdx ] );	//Current input
+			int characterTimeStep = 0;
+			
+			for ( int j = startIdx + 1; j <= endIdx; j++, characterTimeStep++ ){
+				
+				int nextCharIdx = charToIdxMap.get( fileCharacters[ j ] );		//Next character to predict
+				// mini-batch-index, column-index, timestep-index -> 1.0 
+				// for this mini batch example
+				//		input -> set the column index for the character id-index -> at the current timestep (c)
+				input.putScalar(new int[]{ miniBatchIndex, currCharIdx, characterTimeStep }, 1.0);
+				//		labels -> set the column index for the next character id-index -> at the current timestep (c)
+				labels.putScalar(new int[]{ miniBatchIndex, nextCharIdx, characterTimeStep }, 1.0);
 				currCharIdx = nextCharIdx;
 				
-				System.out.println( fileCharacters[j-1] + " -> " + currCharIdx );
+				// note: effectively mapping { input -> output }, saying at this timestep when we see X character in the input, the output should show Y character
 				
-			}
+				//System.out.println( fileCharacters[ j - 1 ] + " -> " + currCharIdx );
+				
+				// setup static columns
+				
+
+				
+				// TODO: consider --- do we put this only in the input or the output too?
+				
+				// input
+				
+				int staticColumnBaseOffset = numCharacters;
+				
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset, characterTimeStep }, br.rating_appearance );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 1, characterTimeStep }, br.rating_aroma );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 2, characterTimeStep }, br.rating_overall );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 3, characterTimeStep }, br.rating_palate );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 4, characterTimeStep }, br.rating_taste );
+				
+				// TODO: need to handle Beer ID
+				
+				// TODO: do we handle user ID?
+				
+			} // for all of the characters -> write to a vector
 			
 			
-		}
+		} // for
 		
 		examplesSoFar += miniBatchSize;
 		return new DataSet(input,labels);
