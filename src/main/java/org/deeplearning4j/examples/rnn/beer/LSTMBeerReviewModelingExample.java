@@ -26,10 +26,16 @@ import org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction;
 public class LSTMBeerReviewModelingExample {
 	public static void main( String[] args ) throws Exception {
 		int lstmLayerSize = 200;					//Number of units in each GravesLSTM layer
-		int miniBatchSize = 32;						//Size of mini batch to use when  training
-		int examplesPerEpoch = 10 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
+		int miniBatchSize = 40;						//Size of mini batch to use when  training
+		
+		int reviewsCoreTrainCount = 242935;
+		
+		//int examplesPerEpoch = 300 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
+		
+		int examplesPerEpoch = 240000;	//i.e., how many examples to learn on between generating samples
+		
 		int exampleLength = 100;					//Length of each training example
-		int numEpochs = 10;							//Total number of training + sample generation epochs
+		int numEpochs = 2;							//Total number of training + sample generation epochs
 		int nSamplesToGenerate = 4;					//Number of samples to generate after each training epoch
 		int nCharactersToSample = 100;				//Length of each sample to generate
 		String generationInitialization = null;		//Optional character initialization; a random character is used if null
@@ -39,7 +45,12 @@ public class LSTMBeerReviewModelingExample {
 		
 		//Get a DataSetIterator that handles vectorization of text into something we can use to train
 		// our GravesLSTM network.
-		BeerReviewCharacterIterator iter = getBeerReviewIterator(miniBatchSize,exampleLength,examplesPerEpoch);
+		//String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/simple_reviews_debug.json";
+		
+		// Count: 242,935
+		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_core-train.json";
+		
+		BeerReviewCharacterIterator iter = getBeerReviewIterator(miniBatchSize,exampleLength,examplesPerEpoch, dataPath);
 		int nOut = iter.totalOutcomes();
 		
 		//Set up network configuration:
@@ -80,14 +91,47 @@ public class LSTMBeerReviewModelingExample {
 		}
 		System.out.println("Total number of network parameters: " + totalNumParams);
 		
+		long totalExamplesAcrossEpochs = 0;
+		long start = System.currentTimeMillis();
+		long totalTrainingTimeMS = 0;
+		
 		//Do training, and then generate and print samples from network
 		for( int i=0; i<numEpochs; i++ ){
+			
+			start = System.currentTimeMillis();
+			
 			net.fit(iter);
+			
+            long end = System.currentTimeMillis();
+            long epochSeconds = Math.abs(end - start) / 1000; // se
+            long epochMin = epochSeconds / 60; // se
+            
+            totalTrainingTimeMS += Math.abs(end - start);
+			
+			
+			totalExamplesAcrossEpochs += examplesPerEpoch;
 			
 			System.out.println("--------------------");
 			System.out.println("Completed epoch " + i );
+			
+			System.out.println("Time for Epoch Training " + Math.abs(end - start) + " ms, (" + epochSeconds + " seconds) (" + (epochMin) + " minutes)");
+			System.out.println( "Total Training Time so Far: " + (totalTrainingTimeMS / 1000 / 60) + " minutes" );
+			// track records
+			System.out.println( "Records in epoch: " + examplesPerEpoch );
+			System.out.println( "Records in dataset: " + iter.totalExamplesinDataset );
+			System.out.println( "Records Seen Across Epochs: " + totalExamplesAcrossEpochs );
+			
 			System.out.println("Sampling characters from network given initialization \""+ (generationInitialization == null ? "" : generationInitialization) +"\"");
-			String[] samples = sampleCharactersFromNetwork(generationInitialization,net,iter,rng,nCharactersToSample,nSamplesToGenerate);
+			//String[] samples = sampleCharactersFromNetwork(generationInitialization,net,iter,rng,nCharactersToSample,nSamplesToGenerate);
+
+			float rating_overall = 4.0f;
+			float rating_taste = 5.0f;
+			float rating_appearance = 4.0f;
+			float rating_palate = 5.0f;
+			float rating_aroma = 5.0f;			
+			
+			String[] samples = sampleBeerRatingFromNetwork( generationInitialization, net, iter, rng, nCharactersToSample, nSamplesToGenerate, rating_overall, rating_taste, rating_appearance, rating_palate, rating_aroma );
+			
 			for( int j=0; j<samples.length; j++ ){
 				System.out.println("----- Sample " + j + " -----");
 				System.out.println(samples[j]);
@@ -109,12 +153,18 @@ public class LSTMBeerReviewModelingExample {
 	 * @return
 	 * @throws Exception
 	 */
-	public static BeerReviewCharacterIterator getBeerReviewIterator(int miniBatchSize, int exampleLength, int examplesPerEpoch) throws Exception{
+	public static BeerReviewCharacterIterator getBeerReviewIterator(int miniBatchSize, int exampleLength, int examplesPerEpoch, String pathToReviewData) throws Exception{
 		//The Complete Works of William Shakespeare
 		//5.3MB file in UTF-8 Encoding, ~5.4 million characters
 		//https://www.gutenberg.org/ebooks/100
 		//String url = "https://s3.amazonaws.com/dl4j-distribution/pg100.txt";
-		String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json";
+		
+		String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json"; 
+		if (null != pathToReviewData) {
+			pathToTestData = pathToReviewData;
+		}
+		//String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json";
+		//String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/simple_reviews_debug.json";
 
 		//String tempDir = System.getProperty("java.io.tmpdir");
 		//String fileLocation = tempDir + "/Shakespeare.txt";	//Storage location from downloaded file
@@ -208,12 +258,22 @@ public class LSTMBeerReviewModelingExample {
 			for( int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++ ){
 			
 				initializationInput.putScalar(new int[]{ sampleIndex, col_idx, charTimestep }, 1.0f);
-			
+
+				
+				// TODO: here is where we need to add in ratings for generation hints
+				
+				int staticColumnBaseOffset = iter.characterColumns();
+				
+				initializationInput.putScalar(new int[]{ sampleIndex, staticColumnBaseOffset, charTimestep }, rating_appearance );
+				initializationInput.putScalar(new int[]{ sampleIndex, staticColumnBaseOffset + 1, charTimestep }, rating_aroma );
+				initializationInput.putScalar(new int[]{ sampleIndex, staticColumnBaseOffset + 2, charTimestep }, rating_overall );
+				initializationInput.putScalar(new int[]{ sampleIndex, staticColumnBaseOffset + 3, charTimestep }, rating_palate );
+				initializationInput.putScalar(new int[]{ sampleIndex, staticColumnBaseOffset + 4, charTimestep }, rating_taste );
+				
+				
 			}
 			
 		}
-		
-		// TODO: here is where we need to add in ratings for generation hints
 		
 		
 		

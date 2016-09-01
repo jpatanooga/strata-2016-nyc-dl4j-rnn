@@ -35,7 +35,7 @@ public class BeerReviewReader {
 	
 	public void init() throws IOException {
 		
-		System.out.println( "initializing beer review reader..." );
+	//	System.out.println( "initializing beer review reader..." );
 
 		//String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json";
 		
@@ -95,6 +95,10 @@ public class BeerReviewReader {
 	}
 	
 	public BeerReview getNextReview() throws IOException {
+		
+		if (false == this.reviewJsonElementIterator.hasNext()) {
+			return null;
+		}
 		
 		JsonNode beer_review = this.reviewJsonElementIterator.next();
 		BeerReview b = this.jacksonJSONObjectMapper.readValue( beer_review.toString(), BeerReview.class );

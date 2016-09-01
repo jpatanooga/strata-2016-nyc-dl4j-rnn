@@ -12,16 +12,42 @@ public class TestBeerReviewCharacterIterator {
 
 	@Test
 	public void test() throws Exception {
-		String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json";
+		//String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json";
 
+		// String pathToData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/simple_reviews_debug.json";
+		String pathToData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_core-train.json";
 		
-		BeerReviewCharacterIterator iter = LSTMBeerReviewModelingExample.getBeerReviewIterator(10, 100, 3500);
+		int examplesPerEpoch = 240000;
+		int miniBatchSize = 40;
+		
+		BeerReviewCharacterIterator iter = LSTMBeerReviewModelingExample.getBeerReviewIterator( miniBatchSize, 100, examplesPerEpoch, pathToData);
+		
+		int count = 0;
+		while (iter.hasNext()) {
+			
+			DataSet ds = iter.next( miniBatchSize );
+			
+			count += miniBatchSize;
+			
+			System.out.println( "Next " + count );
+			
+		}
+		
+		/*
+		iter.reset();
+		
+		count = 0;
 		
 		while (iter.hasNext()) {
 			
-			DataSet ds = iter.next( 10 );
+			DataSet ds = iter.next( miniBatchSize );
+			
+			count += miniBatchSize;
+			
+			System.out.println( "Next " + count );
 			
 		}
+		*/
 		
 		//NDArrayUtils.debug3D_Nd4J_Input( ds.getFeatures(), 1, iter.inputColumns(), 100 );
 		

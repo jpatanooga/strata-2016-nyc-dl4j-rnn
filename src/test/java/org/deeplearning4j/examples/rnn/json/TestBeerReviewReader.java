@@ -28,7 +28,8 @@ public class TestBeerReviewReader {
 		
 			BeerReview b = reader.getNextReview();
 		
-			System.out.println( b.text );
+			System.out.println("Review: " + b.text );
+			System.out.println("Review: " + b.rating_palate + "\n" );
 
 		}
 		

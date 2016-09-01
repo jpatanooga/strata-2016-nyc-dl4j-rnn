@@ -34,6 +34,8 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	private final int numCharacters;
 	private final boolean alwaysStartAtNewLine;
 	
+	public int totalExamplesinDataset = 0;
+	
 	// account for beer review rating columns
 	int extraRatingColumns = 5;
 	
@@ -111,9 +113,9 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		// TODO: init reader
 		this.reviewReader = new BeerReviewReader( textFilePath );
 		
-		int c = this.reviewReader.countReviews();
+		this.totalExamplesinDataset = this.reviewReader.countReviews();
 		
-		System.out.println("found reviews: " + c);
+		System.out.println("\nFound reviews: " + this.totalExamplesinDataset + "\n\n");
 		
 		
 		this.reviewReader.init();
@@ -235,6 +237,7 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			throw new NoSuchElementException();
 		}
 		
+		//System.out.println( "NEXT> batch size: " + miniBatchSize );
 		
 		
 		int inputColumnCount = numCharacters + extraRatingColumns;
@@ -249,6 +252,8 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		
 //		int maxStartIdx = fileCharacters.length - exampleLength;
 		
+		BeerReview brLastGood = null;
+		
 		//Randomly select a subset of the file. No attempt is made to avoid overlapping subsets
 		// of the file in the same minibatch
 		for( int miniBatchIndex = 0; miniBatchIndex < miniBatchSize; miniBatchIndex++ ){
@@ -259,13 +264,20 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			
 			try {
 				br = this.reviewReader.getNextReview();
+				if (null == br) {
+					System.err.println( "Returned a null beer review, using last good..." );
+					br = brLastGood;
+				} else {
+					brLastGood = br;
+				}
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			
-			//System.out.println( br.text );
+		//	System.out.println( br.text );
+		//	System.out.println( br.rating_aroma );
 			
 			fileCharacters = this.convertReviewToCharacters( br );
 			
@@ -295,7 +307,14 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			
 			for ( int j = startIdx + 1; j <= endIdx; j++, characterTimeStep++ ){
 				
-				int nextCharIdx = charToIdxMap.get( fileCharacters[ j ] );		//Next character to predict
+				int nextCharIdx = 0;
+				
+				try {
+				   nextCharIdx = charToIdxMap.get( fileCharacters[ j ] );		//Next character to predict
+				} catch (NullPointerException npe) {
+					System.err.println("bad review: " + br.text);
+				}
+				
 				// mini-batch-index, column-index, timestep-index -> 1.0 
 				// for this mini batch example
 				//		input -> set the column index for the character id-index -> at the current timestep (c)
@@ -344,12 +363,25 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	public int inputColumns() {
 		return numCharacters + extraRatingColumns;
 	}
+	
+	public int characterColumns() {
+		
+		return numCharacters;
+		
+	}
 
 	public int totalOutcomes() {
 		return numCharacters;
 	}
 
 	public void reset() {
+		//System.out.println( "Resetting Beer Review Character Iterator..." );
+		try {
+			this.reviewReader.init();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		examplesSoFar = 0;
 	}
 
