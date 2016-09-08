@@ -14,7 +14,7 @@ public class TestBeerReviewReader {
 	public void testReader() throws IOException {
 		//fail("Not yet implemented");
 		
-		String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json";
+		String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_core-train.json";
 		
 		BeerReviewReader reader = new BeerReviewReader( pathToTestData );
 		
@@ -29,7 +29,8 @@ public class TestBeerReviewReader {
 			BeerReview b = reader.getNextReview();
 		
 			System.out.println("Review: " + b.text );
-			System.out.println("Review: " + b.rating_palate + "\n" );
+			System.out.println("palate: " + b.rating_palate + "\n" );
+			System.out.println("beer_id: " + b.beer_id + "\n" );
 
 		}
 		

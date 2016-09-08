@@ -32,7 +32,7 @@ public class LSTMBeerReviewModelingExample {
 		
 		//int examplesPerEpoch = 300 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
 		
-		int examplesPerEpoch = 240000;	//i.e., how many examples to learn on between generating samples
+		int examplesPerEpoch = 1000; //240000;	//i.e., how many examples to learn on between generating samples
 		
 		int exampleLength = 100;					//Length of each training example
 		int numEpochs = 2;							//Total number of training + sample generation epochs
@@ -50,7 +50,9 @@ public class LSTMBeerReviewModelingExample {
 		// Count: 242,935
 		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_core-train.json";
 		
-		BeerReviewCharacterIterator iter = getBeerReviewIterator(miniBatchSize,exampleLength,examplesPerEpoch, dataPath);
+		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/beers_all.json";
+		
+		BeerReviewCharacterIterator iter = getBeerReviewIterator(miniBatchSize,exampleLength,examplesPerEpoch, dataPath, pathToBeerData);
 		int nOut = iter.totalOutcomes();
 		
 		//Set up network configuration:
@@ -128,9 +130,10 @@ public class LSTMBeerReviewModelingExample {
 			float rating_taste = 5.0f;
 			float rating_appearance = 4.0f;
 			float rating_palate = 5.0f;
-			float rating_aroma = 5.0f;			
+			float rating_aroma = 5.0f;	
+			int styleIndex = 27;
 			
-			String[] samples = sampleBeerRatingFromNetwork( generationInitialization, net, iter, rng, nCharactersToSample, nSamplesToGenerate, rating_overall, rating_taste, rating_appearance, rating_palate, rating_aroma );
+			String[] samples = sampleBeerRatingFromNetwork( generationInitialization, net, iter, rng, nCharactersToSample, nSamplesToGenerate, rating_overall, rating_taste, rating_appearance, rating_palate, rating_aroma, styleIndex );
 			
 			for( int j=0; j<samples.length; j++ ){
 				System.out.println("----- Sample " + j + " -----");
@@ -153,7 +156,7 @@ public class LSTMBeerReviewModelingExample {
 	 * @return
 	 * @throws Exception
 	 */
-	public static BeerReviewCharacterIterator getBeerReviewIterator(int miniBatchSize, int exampleLength, int examplesPerEpoch, String pathToReviewData) throws Exception{
+	public static BeerReviewCharacterIterator getBeerReviewIterator(int miniBatchSize, int exampleLength, int examplesPerEpoch, String pathToReviewData, String pathToBeerData) throws Exception{
 		//The Complete Works of William Shakespeare
 		//5.3MB file in UTF-8 Encoding, ~5.4 million characters
 		//https://www.gutenberg.org/ebooks/100
@@ -180,7 +183,7 @@ public class LSTMBeerReviewModelingExample {
 		if(!f.exists()) throw new IOException("File does not exist: " + fileLocation);	//Download problem?
 	*/	
 		char[] validCharacters = BeerReviewCharacterIterator.getMinimalCharacterSet();	//Which characters are allowed? Others will be removed
-		return new BeerReviewCharacterIterator(pathToTestData, Charset.forName("UTF-8"),
+		return new BeerReviewCharacterIterator(pathToTestData, pathToBeerData, Charset.forName("UTF-8"),
 				miniBatchSize, exampleLength, examplesPerEpoch, validCharacters, new Random(12345),true);
 		
 		
@@ -231,7 +234,7 @@ public class LSTMBeerReviewModelingExample {
  */
 	private static String[] sampleBeerRatingFromNetwork( String initialization, MultiLayerNetwork net,
 			BeerReviewCharacterIterator iter, Random rng, int charactersToSample, int numSamples, 
-			float rating_overall, float rating_taste, float rating_appearance, float rating_palate, float rating_aroma ){
+			float rating_overall, float rating_taste, float rating_appearance, float rating_palate, float rating_aroma, int styleIndex ){
 	
 	
 
@@ -269,6 +272,15 @@ public class LSTMBeerReviewModelingExample {
 				initializationInput.putScalar(new int[]{ sampleIndex, staticColumnBaseOffset + 2, charTimestep }, rating_overall );
 				initializationInput.putScalar(new int[]{ sampleIndex, staticColumnBaseOffset + 3, charTimestep }, rating_palate );
 				initializationInput.putScalar(new int[]{ sampleIndex, staticColumnBaseOffset + 4, charTimestep }, rating_taste );
+
+				
+				// SETUP STYLE INDEX
+				int styleColumnBaseOffset = staticColumnBaseOffset + 5;
+				int styleIndexColumn = styleColumnBaseOffset + styleIndex; // add the base to the index
+				
+				//System.out.println( "style index base: " + styleColumnBaseOffset + ", offset: " + styleIndexColumn );
+				
+				initializationInput.putScalar(new int[]{ sampleIndex, styleIndexColumn, charTimestep }, 1.0 );
 				
 				
 			}

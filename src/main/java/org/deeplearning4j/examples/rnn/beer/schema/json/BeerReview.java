@@ -28,5 +28,8 @@ public class BeerReview {
 	public String user = "";
 	
 	// todo: added beer ID
+	public String beer_id = "0";
+	
+	public Beer beer = null;
 
 }

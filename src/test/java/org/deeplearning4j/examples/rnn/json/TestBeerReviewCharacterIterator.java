@@ -14,13 +14,15 @@ public class TestBeerReviewCharacterIterator {
 	public void test() throws Exception {
 		//String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json";
 
+		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/beers_all.json";
+		
 		// String pathToData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/simple_reviews_debug.json";
 		String pathToData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_core-train.json";
 		
 		int examplesPerEpoch = 240000;
 		int miniBatchSize = 40;
 		
-		BeerReviewCharacterIterator iter = LSTMBeerReviewModelingExample.getBeerReviewIterator( miniBatchSize, 100, examplesPerEpoch, pathToData);
+		BeerReviewCharacterIterator iter = LSTMBeerReviewModelingExample.getBeerReviewIterator( miniBatchSize, 100, examplesPerEpoch, pathToData, pathToBeerData);
 		
 		int count = 0;
 		while (iter.hasNext()) {
@@ -30,6 +32,10 @@ public class TestBeerReviewCharacterIterator {
 			count += miniBatchSize;
 			
 			System.out.println( "Next " + count );
+			
+			if (count > 100) {
+				break;
+			}
 			
 		}
 		

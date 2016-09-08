@@ -13,6 +13,8 @@ import java.util.NoSuchElementException;
 import java.util.Random;
 
 import org.deeplearning4j.datasets.iterator.DataSetIterator;
+import org.deeplearning4j.examples.rnn.beer.schema.json.Beer;
+import org.deeplearning4j.examples.rnn.beer.schema.json.BeerDictionary;
 import org.deeplearning4j.examples.rnn.beer.schema.json.BeerReview;
 import org.deeplearning4j.examples.rnn.beer.schema.json.BeerReviewReader;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -40,13 +42,15 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	int extraRatingColumns = 5;
 	
 	BeerReviewReader reviewReader = null;
+	BeerDictionary beerDictionary = null;
 	
-	public BeerReviewCharacterIterator(String path, int miniBatchSize, int exampleSize, int numExamplesToFetch ) throws IOException {
-		this(path,Charset.defaultCharset(),miniBatchSize,exampleSize,numExamplesToFetch,getDefaultCharacterSet(), new Random(),true);
+	public BeerReviewCharacterIterator(String path, String beerDictionaryFilePath, int miniBatchSize, int exampleSize, int numExamplesToFetch ) throws IOException {
+		this(path, beerDictionaryFilePath, Charset.defaultCharset(),miniBatchSize,exampleSize,numExamplesToFetch,getDefaultCharacterSet(), new Random(),true);
 	}
 	
 	/**
 	 * @param textFilePath Path to text file to use for generating samples
+	 * @param beerDictionaryFilePath beer dictionary
 	 * @param textFileEncoding Encoding of the text file. Can try Charset.defaultCharset()
 	 * @param miniBatchSize Number of examples per mini-batch
 	 * @param exampleLength Number of characters in each input/output vector
@@ -57,7 +61,7 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	 *  of no new line characters, to avoid scanning entire file)
 	 * @throws IOException If text file cannot  be loaded
 	 */
-	public BeerReviewCharacterIterator(String textFilePath, Charset textFileEncoding, int miniBatchSize, int exampleLength,
+	public BeerReviewCharacterIterator(String textFilePath, String beerDictionaryFilePath, Charset textFileEncoding, int miniBatchSize, int exampleLength,
 			int numExamplesToFetch, char[] validCharacters, Random rng, boolean alwaysStartAtNewLine ) throws IOException {
 		if( !new File(textFilePath).exists()) throw new IOException("Could not access file (does not exist): " + textFilePath);
 		if(numExamplesToFetch % miniBatchSize != 0 ) throw new IllegalArgumentException("numExamplesToFetch must be a multiple of miniBatchSize");
@@ -109,6 +113,9 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		
 		int nRemoved = maxSize - fileCharacters.length;
 		*/
+		
+		this.beerDictionary = new BeerDictionary();
+		this.beerDictionary.loadBeerEntries(beerDictionaryFilePath);
 		
 		// TODO: init reader
 		this.reviewReader = new BeerReviewReader( textFilePath );
@@ -239,8 +246,9 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		
 		//System.out.println( "NEXT> batch size: " + miniBatchSize );
 		
+		int beerStyleColumnCount = this.beerDictionary.getBeerStyleCount();
 		
-		int inputColumnCount = numCharacters + extraRatingColumns;
+		int inputColumnCount = numCharacters + extraRatingColumns + beerStyleColumnCount;
 		int outputColumnCount = numCharacters;
 		
 		//Allocate space: { mini-batch size, number columns, number timesteps }
@@ -275,6 +283,23 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			
+			// JOIN: br.beer_id -> beer.style -> beerStyle.index
+			// MEANING: we need to pre-cache this join in the beer dictionary
+			// SO: for each beer: link beer_id -> beer_style_index
+			
+			int styleIndex = this.beerDictionary.lookupBeerStyleIndexByBeerID( br.beer_id );
+			
+			//System.out.println( "Style Index Lookup: " + br.beer_id + " -> " + styleIndex );
+			
+			/*
+			// lookup the beer type
+			Beer beerTmp = this.beerDictionary.getBeerByStyle( br.beer.style );
+			//String beerType = beer.style;
+			if (null != beerTmp) {
+				br.beer = beerTmp;
+			}
+			*/
 			
 		//	System.out.println( br.text );
 		//	System.out.println( br.rating_aroma );
@@ -343,7 +368,16 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 3, characterTimeStep }, br.rating_palate );
 				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 4, characterTimeStep }, br.rating_taste );
 				
-				// TODO: need to handle Beer ID
+				// TODO: handle beer style ID
+				
+				// set the correct style column index as 1.0
+				
+				int styleColumnBaseOffset = staticColumnBaseOffset + 5;
+				int styleIndexColumn = styleColumnBaseOffset + styleIndex; // add the base to the index
+				
+				//System.out.println( "style index base: " + styleColumnBaseOffset + ", offset: " + styleIndexColumn );
+				
+				input.putScalar(new int[]{ miniBatchIndex, styleIndexColumn, characterTimeStep }, 1.0 );
 				
 				// TODO: do we handle user ID?
 				
@@ -361,7 +395,10 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	}
 
 	public int inputColumns() {
-		return numCharacters + extraRatingColumns;
+		
+		int beerStyleColumnCount = this.beerDictionary.getBeerStyleCount();
+		
+		return numCharacters + extraRatingColumns + beerStyleColumnCount;
 	}
 	
 	public int characterColumns() {
