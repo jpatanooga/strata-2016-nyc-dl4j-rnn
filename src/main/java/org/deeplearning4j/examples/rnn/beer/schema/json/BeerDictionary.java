@@ -27,6 +27,7 @@ public class BeerDictionary {
 	Iterator<JsonNode> beerJsonElementIterator = null;
 	ObjectMapper jacksonJSONObjectMapper = null;	
 	
+	// map: { styleKey, BeerStyle }
 	Map<String, BeerStyle> beerMap = new HashMap<>();
 	
 	// JOIN: br.beer_id -> beer.style -> beerStyle.index
@@ -34,6 +35,10 @@ public class BeerDictionary {
 	// SO: for each beer: link beer_id -> beer_style_index
 	
 	Map<String, Integer> beerIDToStyleIndexMap = new HashMap<>();
+	
+	
+	// alternate index
+	Map<String, String> beerIDToStyleMap = new HashMap<>();
 	
 	
 	public void loadBeerEntries(String strPath) throws JsonProcessingException, IOException {
@@ -69,9 +74,14 @@ public class BeerDictionary {
 			//this.updateBeerStyleStats( b.id );
 			int index = this.addBeerStyleToMap( b );
 			
-			this.mapBeerIDtoStyleIndex( b.id, index );
+			if (-1 == index) {
+				
+			} else {
+				this.mapBeerIDtoStyleIndex( b.id, index );
+				this.mapBeerIDtoStyle( b.id, b.style );
 			
-			beerCount++;
+				beerCount++;
+			}
 			
 		}
 		
@@ -127,6 +137,13 @@ public class BeerDictionary {
 		this.beerIDToStyleIndexMap.put( beerID, styleIndex );
 		
 	}
+
+	public void mapBeerIDtoStyle(String beerID, String style) {
+		
+		this.beerIDToStyleMap.put( beerID, style );
+		
+	}
+	
 	
 	public int lookupBeerStyleIndex( String style ) {
 		
@@ -159,6 +176,17 @@ public class BeerDictionary {
 		// default
 		return -1;
 	}
+	
+	public String lookupBeerStyleByBeerID(String beerID ) {
+		
+		if (this.beerIDToStyleMap.containsKey(beerID)) {
+			
+			return this.beerIDToStyleMap.get( beerID );
+		}
+		
+		// default
+		return null;
+	}	
 	
 	/*
 	public void updateBeerStyleStats(String id) {

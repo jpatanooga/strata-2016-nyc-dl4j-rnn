@@ -131,12 +131,12 @@ public class LSTMBeerReviewModelingExample {
 			float rating_appearance = 4.0f;
 			float rating_palate = 5.0f;
 			float rating_aroma = 5.0f;	
-			int styleIndex = 27;
+			int styleIndex = 2; // Lager
 			
 			String[] samples = sampleBeerRatingFromNetwork( generationInitialization, net, iter, rng, nCharactersToSample, nSamplesToGenerate, rating_overall, rating_taste, rating_appearance, rating_palate, rating_aroma, styleIndex );
 			
 			for( int j=0; j<samples.length; j++ ){
-				System.out.println("----- Sample " + j + " -----");
+				System.out.println("----- Generating Lager Beer Review Sample [" + j + "] -----");
 				System.out.println(samples[j]);
 				System.out.println();
 			}

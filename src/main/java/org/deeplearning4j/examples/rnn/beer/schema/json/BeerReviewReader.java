@@ -125,6 +125,58 @@ public class BeerReviewReader {
 		
 	}
 	
+	/**
+	 * Hack to get this going
+	 * 
+	 * @return
+	 * @throws IOException
+	 */
+	public BeerReview getNextFilteredReview(GroupedBeerDictionary dict) throws IOException {
+		
+		if (false == this.reviewJsonElementIterator.hasNext()) {
+			return null;
+		}
+		
+		JsonNode beer_review = this.reviewJsonElementIterator.next();
+		BeerReview b = this.jacksonJSONObjectMapper.readValue( beer_review.toString(), BeerReview.class );
+		
+		//this.jacksonJSONObjectMapper.
+		
+		this.count++;
+		
+		int styleIndex = dict.lookupBeerStyleIndexByBeerID( b.beer_id );
+		
+		while (b.text.length() < 1 || styleIndex < 0) {
+			System.err.println( "Skipped empty/filtered review at count: " + this.count );
+			beer_review = this.reviewJsonElementIterator.next();
+			b = this.jacksonJSONObjectMapper.readValue( beer_review.toString(), BeerReview.class );
+			styleIndex = dict.lookupBeerStyleIndexByBeerID( b.beer_id );
+			this.count++;
+		}
+		
+		
+			
+		//	System.out.println("review: " + b.text );
+		//	System.out.println("\tuser: " + b.user );
+		//	System.out.println("\trating overall: " + b.rating_overall );
+			
+
+		return b;
+		
+	}	
+	
+	private boolean passesFilter(String style) {
+		
+		String styleFiltererd = GroupedBeerDictionary.parseGroupedStyle( style );
+		
+		if ( null == styleFiltererd ) {
+			return false;
+		}
+		
+		return true;
+		
+	}
+	
 	public boolean hasNext() {
 		
 		return this.reviewJsonElementIterator.hasNext();

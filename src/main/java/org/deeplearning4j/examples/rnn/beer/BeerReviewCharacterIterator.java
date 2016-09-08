@@ -17,6 +17,7 @@ import org.deeplearning4j.examples.rnn.beer.schema.json.Beer;
 import org.deeplearning4j.examples.rnn.beer.schema.json.BeerDictionary;
 import org.deeplearning4j.examples.rnn.beer.schema.json.BeerReview;
 import org.deeplearning4j.examples.rnn.beer.schema.json.BeerReviewReader;
+import org.deeplearning4j.examples.rnn.beer.schema.json.GroupedBeerDictionary;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.DataSetPreProcessor;
@@ -114,8 +115,9 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		int nRemoved = maxSize - fileCharacters.length;
 		*/
 		
-		this.beerDictionary = new BeerDictionary();
+		this.beerDictionary = new GroupedBeerDictionary();
 		this.beerDictionary.loadBeerEntries(beerDictionaryFilePath);
+		this.beerDictionary.printBeerStyleStats();
 		
 		// TODO: init reader
 		this.reviewReader = new BeerReviewReader( textFilePath );
@@ -271,7 +273,8 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			BeerReview br = null;
 			
 			try {
-				br = this.reviewReader.getNextReview();
+				//br = this.reviewReader.getNextReview();
+				br = this.reviewReader.getNextFilteredReview( (GroupedBeerDictionary) this.beerDictionary );
 				if (null == br) {
 					System.err.println( "Returned a null beer review, using last good..." );
 					br = brLastGood;
@@ -289,6 +292,7 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			// SO: for each beer: link beer_id -> beer_style_index
 			
 			int styleIndex = this.beerDictionary.lookupBeerStyleIndexByBeerID( br.beer_id );
+			String styleFull = this.beerDictionary.lookupBeerStyleByBeerID( br.beer_id );
 			
 			//System.out.println( "Style Index Lookup: " + br.beer_id + " -> " + styleIndex );
 			
@@ -330,6 +334,14 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			int currCharIdx = charToIdxMap.get( fileCharacters[ startIdx ] );	//Current input
 			int characterTimeStep = 0;
 			
+			int staticColumnBaseOffset = numCharacters;
+			
+			int styleColumnBaseOffset = staticColumnBaseOffset + 5;
+			int styleIndexColumn = styleColumnBaseOffset + styleIndex; // add the base to the index
+			
+//			System.out.println( "style index base: " + styleColumnBaseOffset + ", offset: " + styleIndexColumn + ", Name: " + styleFull );
+			
+			
 			for ( int j = startIdx + 1; j <= endIdx; j++, characterTimeStep++ ){
 				
 				int nextCharIdx = 0;
@@ -360,7 +372,7 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				
 				// input
 				
-				int staticColumnBaseOffset = numCharacters;
+				
 				
 				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset, characterTimeStep }, br.rating_appearance );
 				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 1, characterTimeStep }, br.rating_aroma );
@@ -372,10 +384,6 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				
 				// set the correct style column index as 1.0
 				
-				int styleColumnBaseOffset = staticColumnBaseOffset + 5;
-				int styleIndexColumn = styleColumnBaseOffset + styleIndex; // add the base to the index
-				
-				//System.out.println( "style index base: " + styleColumnBaseOffset + ", offset: " + styleIndexColumn );
 				
 				input.putScalar(new int[]{ miniBatchIndex, styleIndexColumn, characterTimeStep }, 1.0 );
 				
