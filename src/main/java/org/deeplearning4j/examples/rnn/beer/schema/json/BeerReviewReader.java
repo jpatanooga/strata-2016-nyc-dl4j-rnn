@@ -147,7 +147,7 @@ public class BeerReviewReader {
 		int styleIndex = dict.lookupBeerStyleIndexByBeerID( b.beer_id );
 		
 		while (b.text.length() < 1 || styleIndex < 0) {
-			System.err.println( "Skipped empty/filtered review at count: " + this.count );
+		//	System.err.println( "Skipped empty/filtered review at count: " + this.count );
 			beer_review = this.reviewJsonElementIterator.next();
 			b = this.jacksonJSONObjectMapper.readValue( beer_review.toString(), BeerReview.class );
 			styleIndex = dict.lookupBeerStyleIndexByBeerID( b.beer_id );

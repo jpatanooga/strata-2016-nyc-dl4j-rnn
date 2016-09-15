@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Random;
 
 import org.apache.commons.io.FileUtils;
@@ -19,6 +21,7 @@ import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
+import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction;
@@ -32,10 +35,10 @@ public class LSTMBeerReviewModelingExample {
 		
 		//int examplesPerEpoch = 300 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
 		
-		int examplesPerEpoch = 1000; //240000;	//i.e., how many examples to learn on between generating samples
+		int examplesPerEpoch = 8000; //240000;	//i.e., how many examples to learn on between generating samples
 		
 		int exampleLength = 100;					//Length of each training example
-		int numEpochs = 2;							//Total number of training + sample generation epochs
+		int numEpochs = 10;							//Total number of training + sample generation epochs
 		int nSamplesToGenerate = 4;					//Number of samples to generate after each training epoch
 		int nCharactersToSample = 100;				//Length of each sample to generate
 		String generationInitialization = null;		//Optional character initialization; a random character is used if null
@@ -51,6 +54,11 @@ public class LSTMBeerReviewModelingExample {
 		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_core-train.json";
 		
 		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/beers_all.json";
+		
+		
+		String modelSavePath = "/tmp/dl4j_strata.model";
+		boolean loadPrevModel = true;
+		String modelLoadPath = modelSavePath;
 		
 		BeerReviewCharacterIterator iter = getBeerReviewIterator(miniBatchSize,exampleLength,examplesPerEpoch, dataPath, pathToBeerData);
 		int nOut = iter.totalOutcomes();
@@ -80,9 +88,22 @@ public class LSTMBeerReviewModelingExample {
 			.build();
 		
 		MultiLayerNetwork net = new MultiLayerNetwork(conf);
+		
+		if (loadPrevModel) {
+			
+			System.out.println("Loading existing model for continued training from local disk: " + modelLoadPath );
+			net = loadModelFromLocalDisk( modelLoadPath );
+			
+			
+		} else {
+			
+			System.out.println( "Starting with a new model..." );
+			
+		}
+
 		net.init();
 		net.setListeners(new ScoreIterationListener(1));
-		
+
 		//Print the  number of parameters in the network (and for each layer)
 		Layer[] layers = net.getLayers();
 		int totalNumParams = 0;
@@ -145,6 +166,31 @@ public class LSTMBeerReviewModelingExample {
 		}
 		
 		System.out.println("\n\nExample complete");
+		
+
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH_mm_ss");
+		
+		Date now = new Date();
+		String strDate = sdf.format(now);
+		
+		File tempFile = new File("/tmp/dl4j_rnn_" + strDate + ".model");// .createTempFile("tsfs", "fdfsdf");
+		
+		ModelSerializer.writeModel( net, tempFile, true );
+		
+		tempFile = new File( modelSavePath );// .createTempFile("tsfs", "fdfsdf");
+		
+		ModelSerializer.writeModel( net, tempFile, true );
+		
+		
+	}
+	
+	public static MultiLayerNetwork loadModelFromLocalDisk(String path) throws IOException {
+		
+		File file = new File( path );
+		
+		MultiLayerNetwork network = ModelSerializer.restoreMultiLayerNetwork( file );
+		
+		return network;
 	}
 	
 	/**
