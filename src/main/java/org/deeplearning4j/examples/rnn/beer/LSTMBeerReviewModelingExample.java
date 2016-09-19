@@ -35,13 +35,13 @@ public class LSTMBeerReviewModelingExample {
 		
 		//int examplesPerEpoch = 300 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
 		
-		int examplesPerEpoch = 8000; //240000;	//i.e., how many examples to learn on between generating samples
+		int examplesPerEpoch = 4000; //240000;	//i.e., how many examples to learn on between generating samples
 		
 		int exampleLength = 100;					//Length of each training example
-		int numEpochs = 10;							//Total number of training + sample generation epochs
+		int numEpochs = 4;							//Total number of training + sample generation epochs
 		int nSamplesToGenerate = 4;					//Number of samples to generate after each training epoch
 		int nCharactersToSample = 100;				//Length of each sample to generate
-		String generationInitialization = null;		//Optional character initialization; a random character is used if null
+		String generationInitialization = "the";		//Optional character initialization; a random character is used if null
 		// Above is Used to 'prime' the LSTM with a character sequence to continue/complete.
 		// Initialization characters must all be in CharacterIterator.getMinimalCharacterSet() by default
 		Random rng = new Random(12345);
@@ -56,7 +56,7 @@ public class LSTMBeerReviewModelingExample {
 		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/beers_all.json";
 		
 		
-		String modelSavePath = "/tmp/dl4j_strata.model";
+		String modelSavePath = "/Users/josh/Documents/workspace/Skymind/talks/models/beer_review/dl4j_beer_review_strata.model";
 		boolean loadPrevModel = true;
 		String modelLoadPath = modelSavePath;
 		

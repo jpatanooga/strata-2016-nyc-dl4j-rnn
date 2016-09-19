@@ -106,6 +106,13 @@
 
     <dependencies>
         
+        
+<dependency>
+           <groupId>org.twitter4j</groupId>
+           <artifactId>twitter4j-core</artifactId>
+           <version>[4.0,)</version>
+       </dependency>        
+        
 <!-- https://mvnrepository.com/artifact/org.json/json -->
 <dependency>
     <groupId>org.json</groupId>
@@ -189,24 +196,17 @@
         </dependency>
 -->
 
- <dependency>
-            <artifactId>canova-nd4j-image</artifactId>
-            <groupId>org.nd4j</groupId>
-            <version>${canova.version}</version>
-        </dependency>
-        <dependency>
-            <artifactId>canova-nd4j-codec</artifactId>
-            <groupId>org.nd4j</groupId>
-            <version>${canova.version}</version>
-        </dependency>
+
         
-        
+        <!--
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-nlp</artifactId>
             <version>${dl4j.version}</version>
 
         </dependency>
+        -->
+        
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-core</artifactId>
@@ -218,7 +218,7 @@
             <artifactId>jblas</artifactId>
             <version>1.2.4</version>
         </dependency>        
-        
+<!--        
         <dependency>
             <artifactId>canova-nd4j-image</artifactId>
             <groupId>org.nd4j</groupId>
@@ -230,7 +230,7 @@
             <groupId>org.nd4j</groupId>
             <version>${canova.version}</version>
         </dependency>
-        
+-->        
 <dependency>
         <groupId>org.datavec</groupId>
         <artifactId>datavec-api</artifactId>
@@ -252,16 +252,16 @@
             <scope>compile</scope>
         </dependency>
 
-   
+  <!-- 
                 <dependency>
                         <groupId>org.apache.hadoop</groupId>
                         <artifactId>hadoop-common</artifactId>
                         <version>${hadoop.version}</version>
                    <scope>provided</scope>
                 </dependency>
-
+-->
 <!-- hadoop-mapreduce-client-app -->
-
+<!--
                 <dependency>
                         <groupId>org.apache.hadoop</groupId>
                         <artifactId>hadoop-mapreduce-client-app</artifactId>
@@ -275,7 +275,7 @@
                         <version>${hadoop.version}</version>
                        <scope>provided</scope>
                 </dependency>
-
+-->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
