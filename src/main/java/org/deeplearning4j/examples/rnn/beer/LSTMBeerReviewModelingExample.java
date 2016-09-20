@@ -47,7 +47,7 @@ public class LSTMBeerReviewModelingExample {
 		int tbpttLength = 50;                       //Length for truncated backpropagation through time. i.e., do parameter updates ever 50 characters
 		
 		int exampleLength = 100;					//Length of each training example
-		int numEpochs = 10;							//Total number of training + sample generation epochs
+		int numEpochs = 100;							//Total number of training + sample generation epochs
 		int nSamplesToGenerate = 4;					//Number of samples to generate after each training epoch
 		int nCharactersToSample = 100;				//Length of each sample to generate
 		String generationInitialization = "the";		//Optional character initialization; a random character is used if null
@@ -251,6 +251,10 @@ public class LSTMBeerReviewModelingExample {
 		
 		System.out.println( "Training Final Report: " );
 		
+		long totalTrainingTimeMinutesFinal = (totalTrainingTimeMS / 1000 / 60);
+		
+		System.out.println( "Total Training Time: " + totalTrainingTimeMinutesFinal + " minutes" );
+		
 		System.out.println( "Training First Loss Score: " + tracker.firstScore );
 		System.out.println( "Training Average Loss Score: " + tracker.avgScore() );
 		System.out.println( "Training Loss Score Improvement: " + tracker.scoreChangeOverWindow() );
@@ -260,6 +264,12 @@ public class LSTMBeerReviewModelingExample {
 		extraLogLines.add( "Training Dataset: " + dataPath );
 		
 		extraLogLines.add( "Total Epochs: " + numEpochs );
+		extraLogLines.add( "Training Time: " + totalTrainingTimeMinutesFinal );
+		
+		long avgTrainingTimePerEpochInMin = totalTrainingTimeMinutesFinal / numEpochs;
+		
+		extraLogLines.add( "Avg Training Time per Epoch: " + avgTrainingTimePerEpochInMin );
+		
 		extraLogLines.add( "Records in epoch: " + examplesPerEpoch );
 		extraLogLines.add( "Records in dataset: " + iter.totalExamplesinDataset );
 		extraLogLines.add( "Records Seen Across Epochs: " + totalExamplesAcrossEpochs );
@@ -270,7 +280,14 @@ public class LSTMBeerReviewModelingExample {
 		
 		// tracker.computeProjectedEpochsRemainingToTargetLossScore()
 		extraLogLines.add( "Targeted Loss Score: " + tracker.targetLossScore );
-		extraLogLines.add( "Projected Remaining Epochs to Target: " + tracker.computeProjectedEpochsRemainingToTargetLossScore() );
+		
+		double remainingEpochs = tracker.computeProjectedEpochsRemainingToTargetLossScore();
+		
+		extraLogLines.add( "Projected Remaining Epochs to Loss Target: " + remainingEpochs );
+		
+		double projectedRemainingTime = avgTrainingTimePerEpochInMin * remainingEpochs;
+		
+		extraLogLines.add( "Projected Remaining Minutes to Loss Target: " + projectedRemainingTime );
 		
 		Utils.writeLinesToLocalDisk(extraLogLinesPath, extraLogLines);
 		
