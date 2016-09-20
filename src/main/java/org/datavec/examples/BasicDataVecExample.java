@@ -14,7 +14,7 @@ import java.util.List;
 
 //import org.canova.api.records.reader.impl.CSVRecordReader;
 
-import org.canova.api.records.reader.impl.CSVSequenceRecordReader;
+//import org.canova.api.records.reader.impl.CSVSequenceRecordReader;
 import org.nd4j.linalg.dataset.DataSet;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -36,8 +36,8 @@ import org.datavec.api.writable.Writable;
 import org.datavec.spark.transform.SparkTransformExecutor;
 import org.datavec.spark.transform.misc.StringToWritablesFunction;
 import org.datavec.spark.transform.misc.WritablesToStringFunction;
-import org.deeplearning4j.spark.canova.CanovaDataSetFunction;
-import org.deeplearning4j.spark.canova.RecordReaderFunction;
+///import org.deeplearning4j.spark.canova.CanovaDataSetFunction;
+//import org.deeplearning4j.spark.canova.RecordReaderFunction;
 
 //import org.canova.api.records.reader.RecordReader;
 

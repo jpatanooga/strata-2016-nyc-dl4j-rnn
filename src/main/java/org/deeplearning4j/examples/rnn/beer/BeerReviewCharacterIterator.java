@@ -462,4 +462,16 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		return null;
 	}
 
+	@Override
+	public boolean asyncSupported() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean resetSupported() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }

@@ -9,9 +9,11 @@ import java.util.Date;
 import java.util.Random;
 
 import org.apache.commons.io.FileUtils;
+import org.deeplearning4j.examples.rnn.beer.utils.EpochScoreTracker;
 //import org.deeplearning4j.examples.rnn.shakespeare.CharacterIterator;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
+import org.deeplearning4j.nn.conf.BackpropType;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.Updater;
@@ -20,6 +22,7 @@ import org.deeplearning4j.nn.conf.layers.GravesLSTM;
 import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.optimize.listeners.CollectScoresIterationListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -37,8 +40,10 @@ public class LSTMBeerReviewModelingExample {
 		
 		int examplesPerEpoch = 4000; //240000;	//i.e., how many examples to learn on between generating samples
 		
+		int tbpttLength = 50;                       //Length for truncated backpropagation through time. i.e., do parameter updates ever 50 characters
+		
 		int exampleLength = 100;					//Length of each training example
-		int numEpochs = 4;							//Total number of training + sample generation epochs
+		int numEpochs = 20;							//Total number of training + sample generation epochs
 		int nSamplesToGenerate = 4;					//Number of samples to generate after each training epoch
 		int nCharactersToSample = 100;				//Length of each sample to generate
 		String generationInitialization = "the";		//Optional character initialization; a random character is used if null
@@ -60,9 +65,11 @@ public class LSTMBeerReviewModelingExample {
 		boolean loadPrevModel = true;
 		String modelLoadPath = modelSavePath;
 		
+		EpochScoreTracker tracker = new EpochScoreTracker();
+		
 		BeerReviewCharacterIterator iter = getBeerReviewIterator(miniBatchSize,exampleLength,examplesPerEpoch, dataPath, pathToBeerData);
 		int nOut = iter.totalOutcomes();
-		
+		/*
 		//Set up network configuration:
 		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
 			.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT).iterations(1)
@@ -71,21 +78,44 @@ public class LSTMBeerReviewModelingExample {
 			.seed(12345)
 			.regularization(true)
 			.l2(0.001)
-			.list(3)
-			.layer(0, new GravesLSTM.Builder().nIn(iter.inputColumns()).nOut(lstmLayerSize)
+			.layer( new GravesLSTM.Builder().nIn(iter.inputColumns()).nOut(lstmLayerSize)
 					.updater(Updater.RMSPROP)
 					.activation("tanh").weightInit(WeightInit.DISTRIBUTION)
 					.dist(new UniformDistribution(-0.08, 0.08)).build())
-			.layer(1, new GravesLSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize)
+			.layer( new GravesLSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize)
 					.updater(Updater.RMSPROP)
 					.activation("tanh").weightInit(WeightInit.DISTRIBUTION)
 					.dist(new UniformDistribution(-0.08, 0.08)).build())
-			.layer(2, new RnnOutputLayer.Builder(LossFunction.MCXENT).activation("softmax")        //MCXENT + softmax for classification
+			.layer( new RnnOutputLayer.Builder(LossFunction.MCXENT).activation("softmax")        //MCXENT + softmax for classification
 					.updater(Updater.RMSPROP)
 					.nIn(lstmLayerSize).nOut(nOut).weightInit(WeightInit.DISTRIBUTION)
 					.dist(new UniformDistribution(-0.08, 0.08)).build())
-			.pretrain(false).backprop(true)
+			
 			.build();
+		*/
+		
+		
+
+		//Set up network configuration:
+		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
+			.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT).iterations(1)
+			.learningRate(0.1)
+			.rmsDecay(0.95)
+			.seed(12345)
+			.regularization(true)
+			.l2(0.001)
+            .weightInit(WeightInit.XAVIER)
+            .updater(Updater.RMSPROP)
+			.list()
+			.layer(0, new GravesLSTM.Builder().nIn(iter.inputColumns()).nOut(lstmLayerSize)
+					.activation("tanh").build())
+			.layer(1, new GravesLSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize)
+					.activation("tanh").build())
+			.layer(2, new RnnOutputLayer.Builder(LossFunction.MCXENT).activation("softmax")        //MCXENT + softmax for classification
+					.nIn(lstmLayerSize).nOut(nOut).build())
+            .backpropType(BackpropType.TruncatedBPTT).tBPTTForwardLength(tbpttLength).tBPTTBackwardLength(tbpttLength)
+			.pretrain(false).backprop(true)
+			.build();		
 		
 		MultiLayerNetwork net = new MultiLayerNetwork(conf);
 		
@@ -102,7 +132,11 @@ public class LSTMBeerReviewModelingExample {
 		}
 
 		net.init();
-		net.setListeners(new ScoreIterationListener(1));
+		
+		CollectScoresIterationListener scoresCollection = new CollectScoresIterationListener(10);
+		//ScoreIterationListener scoresCollection = new ScoreIterationListener( 10 );
+		
+		net.setListeners( scoresCollection ); //new ScoreIterationListener(1));
 
 		//Print the  number of parameters in the network (and for each layer)
 		Layer[] layers = net.getLayers();
@@ -117,6 +151,8 @@ public class LSTMBeerReviewModelingExample {
 		long totalExamplesAcrossEpochs = 0;
 		long start = System.currentTimeMillis();
 		long totalTrainingTimeMS = 0;
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH_mm_ss");
+
 		
 		//Do training, and then generate and print samples from network
 		for( int i=0; i<numEpochs; i++ ){
@@ -124,6 +160,8 @@ public class LSTMBeerReviewModelingExample {
 			start = System.currentTimeMillis();
 			
 			net.fit(iter);
+			
+			
 			
             long end = System.currentTimeMillis();
             long epochSeconds = Math.abs(end - start) / 1000; // se
@@ -137,14 +175,17 @@ public class LSTMBeerReviewModelingExample {
 			System.out.println("--------------------");
 			System.out.println("Completed epoch " + i );
 			
+			System.out.println( "Epoch Loss Score: " + net.score() );
+			tracker.addScore( net.score() );
+			
 			System.out.println("Time for Epoch Training " + Math.abs(end - start) + " ms, (" + epochSeconds + " seconds) (" + (epochMin) + " minutes)");
 			System.out.println( "Total Training Time so Far: " + (totalTrainingTimeMS / 1000 / 60) + " minutes" );
 			// track records
-			System.out.println( "Records in epoch: " + examplesPerEpoch );
-			System.out.println( "Records in dataset: " + iter.totalExamplesinDataset );
-			System.out.println( "Records Seen Across Epochs: " + totalExamplesAcrossEpochs );
+			//System.out.println( "Records in epoch: " + examplesPerEpoch );
+			//System.out.println( "Records in dataset: " + iter.totalExamplesinDataset );
+			//System.out.println( "Records Seen Across Epochs: " + totalExamplesAcrossEpochs );
 			
-			System.out.println("Sampling characters from network given initialization \""+ (generationInitialization == null ? "" : generationInitialization) +"\"");
+			//System.out.println("Sampling characters from network given initialization \""+ (generationInitialization == null ? "" : generationInitialization) +"\"");
 			//String[] samples = sampleCharactersFromNetwork(generationInitialization,net,iter,rng,nCharactersToSample,nSamplesToGenerate);
 
 			float rating_overall = 4.0f;
@@ -162,24 +203,36 @@ public class LSTMBeerReviewModelingExample {
 				System.out.println();
 			}
 			
+			//net.getListeners()
+			
+			
+			Date now = new Date();
+			String strDate = sdf.format(now);
+			
+			//String path = "/tmp/dl4j_rnn_" + strDate + ".model";
+			
+			File tempFile = new File("/tmp/dl4j_rnn_" + strDate + ".model");// .createTempFile("tsfs", "fdfsdf");
+			
+			ModelSerializer.writeModel( net, tempFile, true );
+			
+			tempFile = new File( modelSavePath );// .createTempFile("tsfs", "fdfsdf");
+			
+			ModelSerializer.writeModel( net, tempFile, true );
+
+			System.out.println( "Model checkpoint saved to: " + tempFile );
+			
 			iter.reset();	//Reset iterator for another epoch
 		}
+		
+		System.out.println( "Training Final Report: " );
+		System.out.println( "Training First Score: " + tracker.firstScore );
+		System.out.println( "Training Average Score: " + tracker.avgScore() );
+		System.out.println( "Training Score Improvement: " + tracker.scoreChangeOverWindow() );
+		
 		
 		System.out.println("\n\nExample complete");
 		
 
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH_mm_ss");
-		
-		Date now = new Date();
-		String strDate = sdf.format(now);
-		
-		File tempFile = new File("/tmp/dl4j_rnn_" + strDate + ".model");// .createTempFile("tsfs", "fdfsdf");
-		
-		ModelSerializer.writeModel( net, tempFile, true );
-		
-		tempFile = new File( modelSavePath );// .createTempFile("tsfs", "fdfsdf");
-		
-		ModelSerializer.writeModel( net, tempFile, true );
 		
 		
 	}
