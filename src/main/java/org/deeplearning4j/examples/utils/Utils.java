@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -181,6 +182,44 @@ public class Utils {
         
         System.out.println( "Saving model parameters to: " + modelPath );
         //System.out.println( "Associated Model Conf: " + hdfsPathToSaveJSON );        
+		
+	}
+	
+	public static void writeLinesToLocalDisk(String path, List<String> lines) {
+		
+		BufferedWriter writer = null;	
+		
+		try {
+            //create a temporary file
+            //String timeLog = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
+            File logFile = new File( path );
+
+            // This will output the full path where the file will be written to...
+            System.out.println(logFile.getCanonicalPath());
+
+            writer = new BufferedWriter(new FileWriter(logFile));
+            
+    		for (int x = 0; x < lines.size(); x++ ) {
+    			
+    			//br.writeUTF( lines.get(x) + "\n" );
+    			writer.write( lines.get(x) + "\n" );
+    			
+    		}
+    		
+    		writer.close();
+            
+            
+            //writer.write("Hello world!");
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                // Close the writer regardless of what happens...
+                writer.close();
+            } catch (Exception e) {
+            }
+        }		
+		
 		
 	}
 	

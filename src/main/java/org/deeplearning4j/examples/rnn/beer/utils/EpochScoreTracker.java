@@ -8,6 +8,8 @@ public class EpochScoreTracker {
 	
 	ArrayList<Double> scores = new ArrayList<>();
 	int windowSize = 5; // default
+	public double targetLossScore = -1.0;
+	int totalEpochsTracked = 0;
 	
 	public EpochScoreTracker() {
 		
@@ -17,6 +19,10 @@ public class EpochScoreTracker {
 		
 		this.windowSize = size;
 		
+	}
+	
+	public void setTargetLossScore(double score) {
+		this.targetLossScore = score;
 	}
 	
 	public void debug() {
@@ -44,6 +50,8 @@ public class EpochScoreTracker {
 			
 		}
 		
+		this.totalEpochsTracked++;
+		
 	}
 	
 	public double avgScore() {
@@ -61,6 +69,15 @@ public class EpochScoreTracker {
 	
 	public double scoreChangeOverWindow() {
 		
+		if (this.totalEpochsTracked == 0) {
+			return 0.0;
+		}
+
+		if (this.totalEpochsTracked == 1) {
+			return this.firstScore;
+		}
+		
+		
 		double first = this.firstScore; //this.scores.get(0);
 		double last = this.scores.get( 0 ); // this.scores.size() - 1 );
 		/*
@@ -71,6 +88,40 @@ public class EpochScoreTracker {
 */
 		return first - last;
 			
+		
+	}
+	
+	public double averageLossImprovementPerEpoch() {
+		
+		double lossChange = this.scoreChangeOverWindow();
+		
+		if (0 == this.totalEpochsTracked) {
+			return 0.0;
+		}
+
+		if (1 == this.totalEpochsTracked) {
+			return lossChange;
+		}
+		
+		
+		return lossChange / (this.totalEpochsTracked - 1);
+		
+		
+	}
+	
+	public double computeProjectedEpochsRemainingToTargetLossScore() {
+		
+		if (this.totalEpochsTracked < 5) {
+			// too few
+			return 0.0;
+		}
+		
+		
+		double avgLossPerEpoch = this.averageLossImprovementPerEpoch();
+		double lastLossScore = this.scores.get( 0 );
+		
+		return lastLossScore / avgLossPerEpoch;
+		
 		
 	}
 

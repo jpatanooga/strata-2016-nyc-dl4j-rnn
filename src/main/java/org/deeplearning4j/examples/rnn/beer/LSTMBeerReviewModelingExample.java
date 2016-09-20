@@ -4,12 +4,16 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+//import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 
 import org.apache.commons.io.FileUtils;
 import org.deeplearning4j.examples.rnn.beer.utils.EpochScoreTracker;
+import org.deeplearning4j.examples.utils.Utils;
 //import org.deeplearning4j.examples.rnn.shakespeare.CharacterIterator;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
@@ -43,7 +47,7 @@ public class LSTMBeerReviewModelingExample {
 		int tbpttLength = 50;                       //Length for truncated backpropagation through time. i.e., do parameter updates ever 50 characters
 		
 		int exampleLength = 100;					//Length of each training example
-		int numEpochs = 20;							//Total number of training + sample generation epochs
+		int numEpochs = 10;							//Total number of training + sample generation epochs
 		int nSamplesToGenerate = 4;					//Number of samples to generate after each training epoch
 		int nCharactersToSample = 100;				//Length of each sample to generate
 		String generationInitialization = "the";		//Optional character initialization; a random character is used if null
@@ -60,12 +64,33 @@ public class LSTMBeerReviewModelingExample {
 		
 		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/beers_all.json";
 		
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH_mm_ss");
 		
-		String modelSavePath = "/Users/josh/Documents/workspace/Skymind/talks/models/beer_review/dl4j_beer_review_strata.model";
+		Date nowLogPath = new Date();
+		String strDateLogPath = sdf.format(nowLogPath);
+		
+		String baseModelPath = "/Users/josh/Documents/workspace/Skymind/talks/models/beer_review/";
+		
+		File logDirectory = new File(baseModelPath + "logs/");
+		
+		if (logDirectory.exists() && logDirectory.isDirectory()) {
+			
+		} else {
+			
+			//Files.createDirectory(new Path() );
+			logDirectory.mkdir();
+			System.out.println( "Creating log directory: " + logDirectory.toString() );
+			
+		}
+		
+		String extraLogLinesPath = baseModelPath + "logs/dl4j_beer_review_" + strDateLogPath + ".log";
+		String modelSavePath = baseModelPath + "dl4j_beer_review_strata.model";
 		boolean loadPrevModel = true;
 		String modelLoadPath = modelSavePath;
 		
 		EpochScoreTracker tracker = new EpochScoreTracker();
+		tracker.setTargetLossScore(10.0);
+		ArrayList<String> extraLogLines = new ArrayList<>();
 		
 		BeerReviewCharacterIterator iter = getBeerReviewIterator(miniBatchSize,exampleLength,examplesPerEpoch, dataPath, pathToBeerData);
 		int nOut = iter.totalOutcomes();
@@ -151,7 +176,7 @@ public class LSTMBeerReviewModelingExample {
 		long totalExamplesAcrossEpochs = 0;
 		long start = System.currentTimeMillis();
 		long totalTrainingTimeMS = 0;
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH_mm_ss");
+		
 
 		
 		//Do training, and then generate and print samples from network
@@ -225,10 +250,29 @@ public class LSTMBeerReviewModelingExample {
 		}
 		
 		System.out.println( "Training Final Report: " );
-		System.out.println( "Training First Score: " + tracker.firstScore );
-		System.out.println( "Training Average Score: " + tracker.avgScore() );
-		System.out.println( "Training Score Improvement: " + tracker.scoreChangeOverWindow() );
 		
+		System.out.println( "Training First Loss Score: " + tracker.firstScore );
+		System.out.println( "Training Average Loss Score: " + tracker.avgScore() );
+		System.out.println( "Training Loss Score Improvement: " + tracker.scoreChangeOverWindow() );
+		
+		extraLogLines.add( "Mini-Batch Size: " + miniBatchSize );
+		extraLogLines.add( "LSTM Layer Size: " + lstmLayerSize );
+		extraLogLines.add( "Training Dataset: " + dataPath );
+		
+		extraLogLines.add( "Total Epochs: " + numEpochs );
+		extraLogLines.add( "Records in epoch: " + examplesPerEpoch );
+		extraLogLines.add( "Records in dataset: " + iter.totalExamplesinDataset );
+		extraLogLines.add( "Records Seen Across Epochs: " + totalExamplesAcrossEpochs );
+		extraLogLines.add( "Training First Loss Score: " + tracker.firstScore );
+		extraLogLines.add( "Training Average Loss Score: " + tracker.avgScore() );
+		extraLogLines.add( "Training Total Loss Score Improvement: " + tracker.scoreChangeOverWindow() );
+		extraLogLines.add( "Training Average Loss Score Improvement per Epoch: " + tracker.averageLossImprovementPerEpoch() );
+		
+		// tracker.computeProjectedEpochsRemainingToTargetLossScore()
+		extraLogLines.add( "Targeted Loss Score: " + tracker.targetLossScore );
+		extraLogLines.add( "Projected Remaining Epochs to Target: " + tracker.computeProjectedEpochsRemainingToTargetLossScore() );
+		
+		Utils.writeLinesToLocalDisk(extraLogLinesPath, extraLogLines);
 		
 		System.out.println("\n\nExample complete");
 		
