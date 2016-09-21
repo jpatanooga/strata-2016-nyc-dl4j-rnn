@@ -59,15 +59,15 @@ public class LSTMBeerReviewModelingExample {
 		
 		// Count: 242,935
 //		josh/Documents/Talks/2016/Strata_NYC/data/
-		String dataPath = "/Users/davekale/beer/reviews_top-train.json";
-		String pathToBeerData = "/Users/davekale/beer/beers_all.json";
+		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data//beer/reviews_top-train.json";
+		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data//beer/beers_all.json";
 
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH_mm_ss");
 
 		Date nowLogPath = new Date();
 		String strDateLogPath = sdf.format(nowLogPath);
 //josh/Documents/workspace/Skymind/talks
-		String baseModelPath = "/Users/davekale/models/beer_review/";
+		String baseModelPath = "/Users/josh/Documents/workspace/Skymind/talks/models/beer_review/";
 
 		File logDirectory = new File(baseModelPath + "logs/");
 
