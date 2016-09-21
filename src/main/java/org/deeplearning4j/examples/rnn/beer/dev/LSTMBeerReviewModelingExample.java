@@ -66,7 +66,7 @@ public class LSTMBeerReviewModelingExample {
 		Date nowLogPath = new Date();
 		String strDateLogPath = sdf.format(nowLogPath);
 
-		String baseModelPath = "/Users/davekale/models/beer_review/";
+		String baseModelPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/models/beer_review/";
 
 		File logDirectory = new File(baseModelPath + "logs/");
 
