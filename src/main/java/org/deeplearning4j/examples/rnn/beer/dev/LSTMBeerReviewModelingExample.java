@@ -36,6 +36,7 @@ import java.util.Random;
 
 public class LSTMBeerReviewModelingExample {
 	public static void main( String[] args ) throws Exception {
+		System.out.println("ARGS:" + args);
 	    int lstmLayerSize = Integer.parseInt(args[0]);					//Number of units in each GravesLSTM layer
 		int miniBatchSize = Integer.parseInt(args[1]);						//Size of mini batch to use when  training
 		
@@ -43,7 +44,7 @@ public class LSTMBeerReviewModelingExample {
 		
 		//int examplesPerEpoch = 300 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
 		
-		int numExamplesPerEpoch = miniBatchSize * 50; //240000;	//i.e., how many examples to learn on between generating samples
+		int numExamplesPerEpoch = 500000; //miniBatchSize * 50; //240000;	//i.e., how many examples to learn on between generating samples
 		
 		int tbpttLength = 200;                       //Length for truncated backpropagation through time. i.e., do parameter updates ever 50 characters
 		
@@ -66,7 +67,7 @@ public class LSTMBeerReviewModelingExample {
 		Date nowLogPath = new Date();
 		String strDateLogPath = sdf.format(nowLogPath);
 
-		String baseModelPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/models/beer_review/";
+		String baseModelPath = "/Users/josh/Documents/workspace/Skymind/talks/models/beer_review/";
 
 		File logDirectory = new File(baseModelPath + "logs/");
 
@@ -96,7 +97,7 @@ public class LSTMBeerReviewModelingExample {
 		//Set up network configuration:
 		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
 			.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT).iterations(1)
-			.learningRate(0.2)
+			.learningRate(0.1)
 			.rmsDecay(0.95)
 			.seed(12345)
 			.regularization(true)
@@ -151,9 +152,7 @@ public class LSTMBeerReviewModelingExample {
 		
 		//Do training, and then generate and print samples from network
 		for( int i=0; i<numEpochs; i++ ){
-		    if (!iter.hasNext())
-			iter.reset();
-		        System.out.println("Begin epoch " + i);
+			System.out.println("Begin epoch " + i);
 			start = System.currentTimeMillis();
 			
 			net.fit(iter);
@@ -209,7 +208,7 @@ public class LSTMBeerReviewModelingExample {
 
 			System.out.println( "Model checkpoint saved to: " + tempFile );
 			
-			iter.reset();	//Reset iterator for another epoch
+//			iter.reset();	//Reset iterator for another epoch
 		}
 
 		System.out.println( "Training Final Report: " );
