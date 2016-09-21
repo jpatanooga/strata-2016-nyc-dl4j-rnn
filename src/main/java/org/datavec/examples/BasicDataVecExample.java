@@ -16,8 +16,6 @@ import java.util.List;
 
 //import org.canova.api.records.reader.impl.CSVSequenceRecordReader;
 import org.nd4j.linalg.dataset.DataSet;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -43,14 +41,14 @@ import org.datavec.spark.transform.misc.WritablesToStringFunction;
 
 import org.joda.time.DateTimeFieldType;
 import org.joda.time.DateTimeZone;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 //import org.nd4j.linalg.dataset.api.DataSet;
 
 public class BasicDataVecExample {
 
+    private static final Logger log = LoggerFactory.getLogger(BasicDataVecExample.class);
     public static  void main(String[] args) throws Exception {
-    	
-        Logger.getLogger("org").setLevel(Level.ERROR);
-        Logger.getLogger("akka").setLevel(Level.WARN);
 
 
         //=====================================================================
