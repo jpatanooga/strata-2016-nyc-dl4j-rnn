@@ -35,7 +35,6 @@ public class LSTMBeerReviewModelingExample {
 	private static final Logger log = LoggerFactory.getLogger(LSTMBeerReviewModelingExample.class);
 
 	public static void main( String[] args ) throws Exception {
-
 	    int lstmLayerSize = Integer.parseInt(args[0]);					//Number of units in each GravesLSTM layer
 		int miniBatchSize = Integer.parseInt(args[1]);						//Size of mini batch to use when  training
 		
@@ -133,8 +132,8 @@ public class LSTMBeerReviewModelingExample {
 
 		ArrayList<IterationListener> listeners = new ArrayList<IterationListener>();
 		listeners.add(new CollectScoresIterationListener(10));
-		listeners.add(new SampleGeneratorListener(net, reader, new Random(12345), nCharactersToSample, 2, 10));
-		listeners.add(new ScoreIterationListener(10));
+		listeners.add(new SampleGeneratorListener(net, reader, new Random(12345), nCharactersToSample, 2, Integer.parseInt(args[3])));
+		listeners.add(new ScoreIterationListener(Integer.parseInt(args[4])));
 		net.setListeners(listeners);
 		
 		//Print the  number of parameters in the network (and for each layer)
