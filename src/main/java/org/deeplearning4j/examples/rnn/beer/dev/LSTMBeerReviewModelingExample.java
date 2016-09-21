@@ -36,18 +36,18 @@ import java.util.Random;
 
 public class LSTMBeerReviewModelingExample {
 	public static void main( String[] args ) throws Exception {
-		int lstmLayerSize = 64;					//Number of units in each GravesLSTM layer
-		int miniBatchSize = 32;						//Size of mini batch to use when  training
+		int lstmLayerSize = 1024;					//Number of units in each GravesLSTM layer
+		int miniBatchSize = 256;						//Size of mini batch to use when  training
 		
 		int reviewsCoreTrainCount = 135000;
 		
 		//int examplesPerEpoch = 300 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
 		
-		int numExamplesPerEpoch = miniBatchSize * 1; //240000;	//i.e., how many examples to learn on between generating samples
+		int numExamplesPerEpoch = miniBatchSize * 50; //240000;	//i.e., how many examples to learn on between generating samples
 		
 		int tbpttLength = 200;                       //Length for truncated backpropagation through time. i.e., do parameter updates ever 50 characters
 		
-		int numEpochs = 10;							//Total number of training + sample generation epochs
+		int numEpochs = 1000;							//Total number of training + sample generation epochs
 		int nCharactersToSample = 500;				//Length of each sample to generate
 		// Above is Used to 'prime' the LSTM with a character sequence to continue/complete.
 		// Initialization characters must all be in CharacterIterator.getMinimalCharacterSet() by default
@@ -58,10 +58,8 @@ public class LSTMBeerReviewModelingExample {
 		//String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/simple_reviews_debug.json";
 		
 		// Count: 242,935
-//		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-train.json";
-		String dataPath = "/Users/davekale/beer/reviews_top-train.json";
-		
-		String pathToBeerData = "/Users/davekale/beer/beers_all.json";
+		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-train.json";
+		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/beers_all.json";
 
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH_mm_ss");
 
@@ -108,9 +106,9 @@ public class LSTMBeerReviewModelingExample {
 			.list()
 			.layer(0, new GravesLSTM.Builder().nIn(iter.inputColumns()).nOut(lstmLayerSize)
 					.activation("tanh").build())
-//			.layer(1, new GravesLSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize)
-//					.activation("tanh").build())
-			.layer(1, new RnnOutputLayer.Builder(LossFunction.MCXENT).activation("softmax")        //MCXENT + softmax for classification
+			.layer(1, new GravesLSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize)
+					.activation("tanh").build())
+			.layer(2, new RnnOutputLayer.Builder(LossFunction.MCXENT).activation("softmax")        //MCXENT + softmax for classification
 					.nIn(lstmLayerSize).nOut(nOut).build())
             .backpropType(BackpropType.TruncatedBPTT).tBPTTForwardLength(tbpttLength).tBPTTBackwardLength(tbpttLength)
 			.pretrain(false).backprop(true)
