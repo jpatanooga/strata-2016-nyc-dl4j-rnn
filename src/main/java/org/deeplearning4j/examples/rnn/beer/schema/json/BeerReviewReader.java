@@ -174,9 +174,8 @@ public class BeerReviewReader {
 	}
 
 	public boolean hasNextForCounting() {
-		
 		return this.reviewJsonElementIterator.hasNext();
-		
+//        return (this.reviewJsonElementIterator.hasNext() && count < 128);
 	}
 	
 	public void close() throws IOException {
