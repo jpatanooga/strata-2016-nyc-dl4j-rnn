@@ -1,15 +1,7 @@
 package org.deeplearning4j.examples.rnn.beer.schema.json;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.io.*;
 import java.util.Iterator;
-import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -19,14 +11,17 @@ public class BeerReviewReader {
 
 	public String strDataPath = "";
 	int count = 0;
-	
+
+	int totalNbReviews = 0;
+	int maxReviewLength = 0;
+
+	JsonNode reviewsRoot = null;
 	Iterator<JsonNode> reviewJsonElementIterator = null;
 	ObjectMapper jacksonJSONObjectMapper = null;
 	
-	public BeerReviewReader(String strJSONDataPath) {
-		
+	public BeerReviewReader(String strJSONDataPath) throws IOException {
+		if( !new File(strJSONDataPath).exists()) throw new IOException("Could not access file (does not exist): " + strJSONDataPath);
 		this.strDataPath = strJSONDataPath;
-		
 	}
 	
 	public int getCount() {
@@ -34,17 +29,18 @@ public class BeerReviewReader {
 	}
 	
 	public void init() throws IOException {
-		
+
 	//	System.out.println( "initializing beer review reader..." );
 
 		//String pathToTestData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-test.json";
-		
+
 		//org.json.
-		
+
 		//List<BeerReview> beerReviews = new ArrayList<BeerReview>();
-		
+
 		//byte[] jsonData = Files.readAllBytes(Paths.get( pathToTestData ));
 		//InputStream in = Text
+
 		BufferedReader br = new BufferedReader(new InputStreamReader( new FileInputStream( this.strDataPath )));
 		
 		this.jacksonJSONObjectMapper = new ObjectMapper();
@@ -55,47 +51,40 @@ public class BeerReviewReader {
 		com.fasterxml.jackson.databind.JsonNode rootNode = this.jacksonJSONObjectMapper.readTree( br ); //this.jacksonJSONObjectMapper.readTree( jsonData );
 		
 		Iterator<JsonNode> root_iter = rootNode.elements();
-		
-		JsonNode list = root_iter.next();
-		
-		this.reviewJsonElementIterator = list.elements();
-		
-		
-				
-		
+		this.reviewsRoot = root_iter.next();
+		this.reviewJsonElementIterator = reviewsRoot.elements();
+	}
+
+	public int getMaxReviewLength() throws JsonProcessingException, IOException {
+		if (maxReviewLength == 0)
+			computeStatistics();
+		return maxReviewLength;
+	}
+
+	public void reset() {
+		reviewJsonElementIterator = reviewsRoot.elements();
 	}
 	
 	public int countReviews() throws JsonProcessingException, IOException {
-		
-		BufferedReader br = new BufferedReader(new InputStreamReader( new FileInputStream( this.strDataPath )));
-		
-		ObjectMapper countJacksonJSONObjectMapper = new ObjectMapper();
-		
-		
-//		this.jacksonJSONObjectMapper.readTree( br );
-		
-		com.fasterxml.jackson.databind.JsonNode rootNode = countJacksonJSONObjectMapper.readTree( br ); //this.jacksonJSONObjectMapper.readTree( jsonData );
-		
-		Iterator<JsonNode> root_iter = rootNode.elements();
-		
-		JsonNode list = root_iter.next();
-		
-		Iterator<JsonNode> iterTmp = reviewJsonElementIterator = list.elements();	
-		int countTmp = 0;
-		
-		while (iterTmp.hasNext()) {
-			
-			countTmp++;
-			//JsonNode beer_review = 
-			iterTmp.next();
+		if (totalNbReviews == 0)
+			computeStatistics();
+		return totalNbReviews;
+	}
+
+	private void computeStatistics() throws JsonProcessingException, IOException {
+		count = totalNbReviews = maxReviewLength = 0;
+		reset();
+		while (hasNext()) {
+			BeerReview b = getNextReview();
+			int length = b.text.length();
+			maxReviewLength = length > maxReviewLength ? length : maxReviewLength;
 		}
-		
-		return countTmp;
-		
+		totalNbReviews = count;
+		count = 0;
+		reset();
 	}
 	
 	public BeerReview getNextReview() throws IOException {
-		
 		if (false == this.reviewJsonElementIterator.hasNext()) {
 			return null;
 		}
@@ -163,8 +152,8 @@ public class BeerReviewReader {
 
 		return b;
 		
-	}	
-	
+	}
+
 	private boolean passesFilter(String style) {
 		
 		String styleFiltererd = GroupedBeerDictionary.parseGroupedStyle( style );
@@ -183,7 +172,7 @@ public class BeerReviewReader {
 		
 	}
 	
-	public void close() {
+	public void close() throws IOException {
 		
 		//this
 		

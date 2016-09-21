@@ -121,14 +121,11 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		
 		// TODO: init reader
 		this.reviewReader = new BeerReviewReader( textFilePath );
+        this.reviewReader.init();
 		
 		this.totalExamplesinDataset = this.reviewReader.countReviews();
 		
 		System.out.println("\nFound reviews: " + this.totalExamplesinDataset + "\n\n");
-		
-		
-		this.reviewReader.init();
-		
 		
 	//	System.out.println("Loaded and converted file: " + fileCharacters.length + " valid characters of "
 	//	+ maxSize + " total characters (" + nRemoved + " removed)");
