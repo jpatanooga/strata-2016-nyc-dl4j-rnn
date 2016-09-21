@@ -38,11 +38,11 @@ public class LSTMBeerReviewModelingExample {
 		int lstmLayerSize = 200;					//Number of units in each GravesLSTM layer
 		int miniBatchSize = 40;						//Size of mini batch to use when  training
 		
-		int reviewsCoreTrainCount = 242935;
+		int reviewsCoreTrainCount = 135000;
 		
 		//int examplesPerEpoch = 300 * miniBatchSize;	//i.e., how many examples to learn on between generating samples
 		
-		int examplesPerEpoch = 4000; //240000;	//i.e., how many examples to learn on between generating samples
+		int examplesPerEpoch = 400000; //240000;	//i.e., how many examples to learn on between generating samples
 		
 		int tbpttLength = 50;                       //Length for truncated backpropagation through time. i.e., do parameter updates ever 50 characters
 		
@@ -60,7 +60,7 @@ public class LSTMBeerReviewModelingExample {
 		//String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/simple_reviews_debug.json";
 		
 		// Count: 242,935
-		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_core-train.json";
+		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-train.json";
 		
 		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/beers_all.json";
 		
@@ -181,7 +181,7 @@ public class LSTMBeerReviewModelingExample {
 		
 		//Do training, and then generate and print samples from network
 		for( int i=0; i<numEpochs; i++ ){
-			
+			System.out.println("EPOCH " + i);
 			start = System.currentTimeMillis();
 			
 			net.fit(iter);
@@ -245,8 +245,8 @@ public class LSTMBeerReviewModelingExample {
 			ModelSerializer.writeModel( net, tempFile, true );
 
 			System.out.println( "Model checkpoint saved to: " + tempFile );
-			
-			iter.reset();	//Reset iterator for another epoch
+
+//			iter.reset();	//Reset iterator for another epoch
 		}
 		
 		System.out.println( "Training Final Report: " );
