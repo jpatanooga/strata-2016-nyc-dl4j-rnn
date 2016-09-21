@@ -52,7 +52,7 @@ public class BeerReviewReader {
 		
 		Iterator<JsonNode> root_iter = rootNode.elements();
 		this.reviewsRoot = root_iter.next();
-		this.reviewJsonElementIterator = reviewsRoot.elements();
+		this.reset();
 	}
 
 	public int getMaxReviewLength() throws JsonProcessingException, IOException {
@@ -62,6 +62,8 @@ public class BeerReviewReader {
 	}
 
 	public void reset() {
+		System.out.println("Resetting reader...");
+		count = 0;
 		reviewJsonElementIterator = reviewsRoot.elements();
 	}
 	
