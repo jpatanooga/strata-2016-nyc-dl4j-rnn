@@ -1,8 +1,6 @@
 package org.deeplearning4j.examples.rnn.beer.dev;
 
 import org.deeplearning4j.datasets.datavec.SequenceRecordReaderDataSetIterator;
-import org.deeplearning4j.examples.rnn.beer.schema.json.BeerDictionary;
-import org.deeplearning4j.examples.rnn.beer.schema.json.BeerReviewReader;
 import org.deeplearning4j.examples.rnn.beer.schema.json.BeerReviewSequenceRecordReader;
 import org.deeplearning4j.examples.rnn.beer.utils.EpochScoreTracker;
 import org.deeplearning4j.examples.utils.Utils;
@@ -16,27 +14,28 @@ import org.deeplearning4j.nn.conf.layers.GravesLSTM;
 import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.CollectScoresIterationListener;
+import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.indexing.INDArrayIndex;
-import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Map;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 //import org.deeplearning4j.examples.rnn.shakespeare.CharacterIterator;
 
 public class LSTMBeerReviewModelingExample {
+	private static final Logger log = LoggerFactory.getLogger(LSTMBeerReviewModelingExample.class);
+
 	public static void main( String[] args ) throws Exception {
-		System.out.println("ARGS:" + args);
+
 	    int lstmLayerSize = Integer.parseInt(args[0]);					//Number of units in each GravesLSTM layer
 		int miniBatchSize = Integer.parseInt(args[1]);						//Size of mini batch to use when  training
 		
@@ -59,15 +58,16 @@ public class LSTMBeerReviewModelingExample {
 		//String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/simple_reviews_debug.json";
 		
 		// Count: 242,935
-		String dataPath = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/reviews_top-train.json";
-		String pathToBeerData = "/Users/josh/Documents/Talks/2016/Strata_NYC/data/beer/beers_all.json";
+//		josh/Documents/Talks/2016/Strata_NYC/data/
+		String dataPath = "/Users/davekale/beer/reviews_top-train.json";
+		String pathToBeerData = "/Users/davekale/beer/beers_all.json";
 
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HH_mm_ss");
 
 		Date nowLogPath = new Date();
 		String strDateLogPath = sdf.format(nowLogPath);
-
-		String baseModelPath = "/Users/josh/Documents/workspace/Skymind/talks/models/beer_review/";
+//josh/Documents/workspace/Skymind/talks
+		String baseModelPath = "/Users/davekale/models/beer_review/";
 
 		File logDirectory = new File(baseModelPath + "logs/");
 
@@ -130,12 +130,13 @@ public class LSTMBeerReviewModelingExample {
 		}
 
 		net.init();
-		
-		CollectScoresIterationListener scoresCollection = new CollectScoresIterationListener(10);
-		//ScoreIterationListener scoresCollection = new ScoreIterationListener( 10 );
-		
-		net.setListeners( scoresCollection ); //new ScoreIterationListener(1));
 
+		ArrayList<IterationListener> listeners = new ArrayList<IterationListener>();
+		listeners.add(new CollectScoresIterationListener(10));
+		listeners.add(new SampleGeneratorListener(net, reader, new Random(12345), nCharactersToSample, 2, 10));
+		listeners.add(new ScoreIterationListener(10));
+		net.setListeners(listeners);
+		
 		//Print the  number of parameters in the network (and for each layer)
 		Layer[] layers = net.getLayers();
 		int totalNumParams = 0;
@@ -152,7 +153,7 @@ public class LSTMBeerReviewModelingExample {
 		
 		//Do training, and then generate and print samples from network
 		for( int i=0; i<numEpochs; i++ ){
-			System.out.println("Begin epoch " + i);
+			log.info("Begin epoch " + i);
 			start = System.currentTimeMillis();
 			
 			net.fit(iter);
@@ -182,17 +183,8 @@ public class LSTMBeerReviewModelingExample {
 			//System.out.println("Sampling characters from network given initialization \""+ (generationInitialization == null ? "" : generationInitialization) +"\"");
 			//String[] samples = sampleCharactersFromNetwork(generationInitialization,net,iter,rng,nCharactersToSample,nSamplesToGenerate);
 
-			String[] samples = sampleBeerRatingFromNetwork(net, reader, rng, nCharactersToSample, 2);
-
-			for( int j=0; j<samples.length; j++ ){
-				System.out.println("----- Generating Lager Beer Review Sample [" + j + "] -----");
-				System.out.println(samples[j]);
-				System.out.println();
-			}
-
 			//net.getListeners()
 
-			
 			Date now = new Date();
 			String strDate = sdf.format(now);
 			
@@ -257,76 +249,12 @@ public class LSTMBeerReviewModelingExample {
 		
 	}
 
-	private static String[] sampleBeerRatingFromNetwork(MultiLayerNetwork net, BeerReviewSequenceRecordReader iter,
-														Random rng, int maxCharactersToSample,
-														int styleIndex ){
-		int numSamples = 5;
-		int vocabSize = iter.getVocabSize();
-		int numStyles = iter.getBeerStyleCount();
-		INDArray context = Nd4j.zeros(numSamples, numStyles + 5);
-		for( int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++ ) {
-			context.putScalar(new int[]{sampleIndex, styleIndex}, 1.0f);
-			context.putScalar(new int[]{sampleIndex, numStyles + 0}, 0.0f);
-			context.putScalar(new int[]{sampleIndex, numStyles + 1}, 0.0f);
-			context.putScalar(new int[]{sampleIndex, numStyles + 2}, 0.0f);
-			context.putScalar(new int[]{sampleIndex, numStyles + 3}, 0.0f);
-			context.putScalar(new int[]{sampleIndex, numStyles + 4}, sampleIndex / 2.0f - 1);
-		}
-
-		int stopWordIndex = iter.convertCharacterToIndex(iter.STOPWORD);
-		int[] sampledCharIndex = new int[numSamples];
-		for (int i = 0; i < sampledCharIndex.length; i++) sampledCharIndex[i] = stopWordIndex;
-
-		StringBuilder[] sb = new StringBuilder[numSamples];
-		for (int i = 0; i < sb.length; i++) sb[i] = new StringBuilder();
-		boolean[] continueBuilding = new boolean[numSamples];
-		for (int i = 0; i < continueBuilding.length; i++) continueBuilding[i] = true;
-
-		//Sample from network (and feed samples back into input) one character at a time (for all samples)
-		//Sampling is done in parallel here
-
-		net.rnnClearPreviousState();
-		for( int i=0; i<maxCharactersToSample; i++ ){
-			INDArray nextInput = Nd4j.zeros(numSamples, vocabSize + numStyles + 5);
-			nextInput.get(NDArrayIndex.all(), NDArrayIndex.interval(vocabSize, vocabSize + numStyles + 5)).assign(context);
-			for (int s=0; s < numSamples; s++)
-				nextInput.putScalar(new int[]{ s, sampledCharIndex[s]}, 1.0f);
-			INDArray output = net.rnnTimeStep( nextInput );
-			for( int s=0; s<numSamples; s++ ){
-				double[] outputProbDistribution = new double[vocabSize];
-				for( int j=0; j<outputProbDistribution.length; j++ ) outputProbDistribution[j] = output.getDouble(s,j);
-				sampledCharIndex[s] = sampleFromDistribution(outputProbDistribution,rng);
-				nextInput.putScalar(new int[]{s,sampledCharIndex[s]}, 1.0f);		//Prepare next time step input
-				if (sampledCharIndex[s] == iter.convertCharacterToIndex(iter.STOPWORD))
-					continueBuilding[s] = false;
-				if (continueBuilding[s])
-					sb[s].append(iter.convertIndexToCharacter(sampledCharIndex[s]));	//Add sampled character to StringBuilder (human readable output)
-			}
-
-		}
-
-		String[] out = new String[numSamples];
-		for( int i=0; i<numSamples; i++ ) out[i] = sb[i].toString();
-		return out;
-	}
-
-	private static int sampleFromDistribution( double[] distribution, Random rng ){
-		double d = rng.nextDouble();
-		double sum = 0.0;
-		for( int i=0; i<distribution.length; i++ ){
-			sum += distribution[i];
-			if( d <= sum ) return i;
-		}
-		//Should never happen if distribution is a valid probability distribution
-		throw new IllegalArgumentException("Distribution is invalid? d="+d+", sum="+sum);
-	}
-	
 	public static MultiLayerNetwork loadModelFromLocalDisk(String path) throws IOException {
-		
+
 		File file = new File( path );
-		
+
 		MultiLayerNetwork network = ModelSerializer.restoreMultiLayerNetwork( file );
-		
+
 		return network;
 	}
 }
