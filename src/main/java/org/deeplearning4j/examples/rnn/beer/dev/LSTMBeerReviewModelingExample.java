@@ -36,8 +36,8 @@ import java.util.Random;
 
 public class LSTMBeerReviewModelingExample {
 	public static void main( String[] args ) throws Exception {
-		int lstmLayerSize = 1024;					//Number of units in each GravesLSTM layer
-		int miniBatchSize = 256;						//Size of mini batch to use when  training
+	    int lstmLayerSize = Integer.parseInt(args[0]);					//Number of units in each GravesLSTM layer
+		int miniBatchSize = Integer.parseInt(args[1]);						//Size of mini batch to use when  training
 		
 		int reviewsCoreTrainCount = 135000;
 		
@@ -47,8 +47,8 @@ public class LSTMBeerReviewModelingExample {
 		
 		int tbpttLength = 200;                       //Length for truncated backpropagation through time. i.e., do parameter updates ever 50 characters
 		
-		int numEpochs = 1000;							//Total number of training + sample generation epochs
-		int nCharactersToSample = 500;				//Length of each sample to generate
+		int numEpochs = Integer.parseInt(args[2]);							//Total number of training + sample generation epochs
+		int nCharactersToSample = 5000;				//Length of each sample to generate
 		// Above is Used to 'prime' the LSTM with a character sequence to continue/complete.
 		// Initialization characters must all be in CharacterIterator.getMinimalCharacterSet() by default
 		Random rng = new Random(12345);
@@ -96,11 +96,11 @@ public class LSTMBeerReviewModelingExample {
 		//Set up network configuration:
 		MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
 			.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT).iterations(1)
-			.learningRate(0.1)
+			.learningRate(0.2)
 			.rmsDecay(0.95)
 			.seed(12345)
 			.regularization(true)
-			.l2(0.001)
+			.l2(0.000001)
             .weightInit(WeightInit.XAVIER)
             .updater(Updater.RMSPROP)
 			.list()
@@ -151,7 +151,9 @@ public class LSTMBeerReviewModelingExample {
 		
 		//Do training, and then generate and print samples from network
 		for( int i=0; i<numEpochs; i++ ){
-			
+		    if (!iter.hasNext())
+			iter.reset();
+		        System.out.println("Begin epoch " + i);
 			start = System.currentTimeMillis();
 			
 			net.fit(iter);
