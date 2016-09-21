@@ -74,7 +74,7 @@ public class BeerReviewReader {
 	private void computeStatistics() throws JsonProcessingException, IOException {
 		count = totalNbReviews = maxReviewLength = 0;
 		reset();
-		while (hasNext()) {
+		while (hasNextForCounting()) {
 			BeerReview b = getNextReview();
 			int length = b.text.length();
 			maxReviewLength = length > maxReviewLength ? length : maxReviewLength;
@@ -154,6 +154,7 @@ public class BeerReviewReader {
 		
 	}
 
+
 	private boolean passesFilter(String style) {
 		
 		String styleFiltererd = GroupedBeerDictionary.parseGroupedStyle( style );
@@ -165,8 +166,12 @@ public class BeerReviewReader {
 		return true;
 		
 	}
-	
+
 	public boolean hasNext() {
+		return hasNextForCounting();
+	}
+
+	public boolean hasNextForCounting() {
 		
 		return this.reviewJsonElementIterator.hasNext();
 		
