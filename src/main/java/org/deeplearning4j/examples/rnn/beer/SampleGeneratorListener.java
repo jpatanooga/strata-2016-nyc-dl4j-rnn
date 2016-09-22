@@ -22,7 +22,7 @@ public class SampleGeneratorListener implements IterationListener {
     private long iterCount = 0;
 
     private int styleIndex;
-    private int maxCharactersToSample;
+    private int maxCharactersToSample > 0 ? maxCharactersToSample : 1000;
     private Random rng;
     private BeerReviewCharacterIterator reader;
     private MultiLayerNetwork net;
