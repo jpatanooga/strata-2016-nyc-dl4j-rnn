@@ -22,6 +22,8 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.CollectScoresIterationListener;
+import org.deeplearning4j.optimize.listeners.ParamAndGradientIterationListener;
+import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.dataset.DataSet;
@@ -133,6 +135,10 @@ public class LSTMBeerReviewModelingExample {
 		listeners.add(new ScoreIterationListener(1));
         listeners.add(new HeldoutScoreIterationListener(partTestData, miniBatchSize, 1));
         listeners.add(new SampleGeneratorListener(net, trainData, rng, maxExampleLength, LAGER, everyNEpochs));
+		File gradientFile = new File(baseModelPath + FileSystems.getDefault().getSeparator() + "gradients.tsv");
+		listeners.add(new ParamAndGradientIterationListener(everyNEpochs, true, false, false, true, false, true, true,
+															gradientFile, "\t"));
+		listeners.add(new PerformanceListener(everyNEpochs, true));
 		net.setListeners(listeners);
 
 		//Print the  number of parameters in the network (and for each layer)
