@@ -56,8 +56,7 @@ public class ModelSaver implements IterationListener {
         if (printIterations <= 0)
             printIterations = 1;
         if (iterCount % printIterations == 0) {
-
-
+            saveModel((MultiLayerNetwork)model, this.modelSavePath);
         }
         iterCount++;
     }
