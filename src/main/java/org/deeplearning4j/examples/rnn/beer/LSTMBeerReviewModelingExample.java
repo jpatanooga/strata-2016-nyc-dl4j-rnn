@@ -74,7 +74,7 @@ public class LSTMBeerReviewModelingExample {
                                                     Charset.forName("UTF-8"), miniBatchSize, maxExampleLength,
                                                     miniBatchSize, validCharacters, rng);
 
-        int everyNEpochs = trainData.totalExamples() / miniBatchSize / 10;
+        int everyNEpochs = 10; //trainData.totalExamples() / miniBatchSize / 50;
         String baseModelPath = System.getenv("MODEL_SAVE_PATH");
         ModelSaver saver = new ModelSaver(baseModelPath, everyNEpochs);
         String modelSavePath = saver.getModelSavePath();
