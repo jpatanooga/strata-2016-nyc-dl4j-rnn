@@ -42,7 +42,7 @@ public class LSTMBeerReviewModelingExample {
 		int tbpttLength = Integer.parseInt(args[3]);          //Truncated backprop through time, i.e., do parameter updates ever 50 characters
 		int numEpochs = Integer.parseInt(args[4]);			  //Total number of training + sample generation epochs
 		int nSamplesToGenerate = 5;                           //Number of samples to generate after each training epoch
-        boolean loadPrevModel = false;
+        boolean loadPrevModel = true;
         String generationInitialization = "~"; //Optional character initialization; a random character is used if null
 		// Above is Used to 'prime' the LSTM with a character sequence to continue/complete.
 		// Initialization characters must all be in CharacterIterator.getMinimalCharacterSet() by default
