@@ -50,7 +50,7 @@ public class HeldoutScoreIterationListener implements IterationListener {
                 cost += ((MultiLayerNetwork)model).scoreExamples(minibatch, false).sumNumber().doubleValue();
                 count += minibatch.getLabelsMaskArray().sumNumber().doubleValue();
             }
-            log.info(String.format("Iteration %5d test set score: %.4f", i, cost/count));
+            log.info(String.format("Iteration %5d test set score: %.4f", iterCount, cost/count));
         }
         iterCount++;
     }
