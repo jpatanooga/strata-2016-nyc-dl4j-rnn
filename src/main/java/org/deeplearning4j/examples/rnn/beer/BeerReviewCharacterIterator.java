@@ -242,11 +242,16 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				// for this mini batch example
 				//		input -> set the column index for the character id-index -> at the current timestep (c)
 				input.putScalar(new int[]{ miniBatchIndex, currCharIdx, characterTimeStep }, 1.0);
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset, characterTimeStep }, br.rating_appearance );
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 1, characterTimeStep }, br.rating_aroma );
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 2, characterTimeStep }, br.rating_overall );
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 3, characterTimeStep }, br.rating_palate );
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 4, characterTimeStep }, br.rating_taste );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset, characterTimeStep },
+								(br.rating_appearance-1)/2.0-1 ); //br.rating_appearance );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 1, characterTimeStep },
+								(br.rating_aroma-1)/2.0-1 ); //br.rating_aroma );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 2, characterTimeStep },
+								(br.rating_overall-1)/2.0-1 ); //br.rating_overall );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 3, characterTimeStep },
+								(br.rating_palate-1)/2.0-1 ); //br.rating_palate );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 4, characterTimeStep },
+								(br.rating_taste-1)/2.0-1 ); //br.rating_taste );
 				input.putScalar(new int[]{ miniBatchIndex, styleIndexColumn, characterTimeStep }, 1.0 );
 
 				mask.putScalar(new int[]{ miniBatchIndex, characterTimeStep }, 1.0);
@@ -258,7 +263,7 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				currCharIdx = nextCharIdx;
 			} // for all of the characters -> write to a vector
 		} // for
-		
+
 		examplesSoFar += miniBatchSize;
 		INDArray mask2 = Nd4j.zeros(new int[]{ miniBatchSize, maxLength });
 		Nd4j.copy(mask, mask2);

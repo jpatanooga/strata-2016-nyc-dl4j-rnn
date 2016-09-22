@@ -77,11 +77,11 @@ public class SampleGeneratorListener implements IterationListener {
 
         INDArray input = Nd4j.zeros(new int[]{numSamples, iter.inputColumns()});
         for (int s = 0; s < numSamples; s++) {
-            input.putScalar(new int[]{s, staticColumnBaseOffset    }, 5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 1}, 5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 2}, s + 1);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 3}, 5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 4}, 5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset    }, 1); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 1}, 1); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 2}, s/2.0 - 1); //s + 1);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 3}, 1); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 4}, 1); //5);
             input.putScalar(new int[]{s, styleIndexColumn}, 1.0);
         }
 
@@ -111,8 +111,8 @@ public class SampleGeneratorListener implements IterationListener {
                     outputProbDistribution[j] = output.getDouble(s, j);
                 prevCharIdx[s] = currCharIdx[s];
                 currCharIdx[s] = sampleFromDistribution(outputProbDistribution, rng);
-                if (currCharIdx[s] == iter.STOPWORD)
-                    continueBuilding[s] = false;
+//                if (currCharIdx[s] == iter.STOPWORD)
+//                    continueBuilding[s] = false;
                 if (continueBuilding[s])
                     sb[s].append(iter.convertIndexToCharacter(currCharIdx[s]));
             }
