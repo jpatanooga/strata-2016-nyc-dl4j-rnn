@@ -166,8 +166,8 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		while(reviewReader.hasNext() && reviews.size() < miniBatchSize) {
 			BeerReview review = null;
 			try {
-				//br = this.reviewReader.getNextReview();
-				review = this.reviewReader.getNextFilteredReview((GroupedBeerDictionary) this.beerDictionary);
+			    review = this.reviewReader.getNextReview();
+//			      review = this.reviewReader.getNextFilteredReview((GroupedBeerDictionary) this.beerDictionary);
 			} catch (IOException e) {
 				e.printStackTrace();
 				throw new NoSuchElementException();
