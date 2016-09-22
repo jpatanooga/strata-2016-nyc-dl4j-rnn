@@ -62,7 +62,6 @@ public class BeerReviewReader {
 	}
 
 	public void reset() {
-		System.out.println("Resetting reader...");
 		count = 0;
 		reviewJsonElementIterator = reviewsRoot.elements();
 	}
