@@ -155,6 +155,11 @@ public class LSTMBeerReviewModelingExample {
 		long start;
 		long totalTrainingTimeMS = 0;
 
+		log.info("----- Generating Initial Lager Beer Review Sample -----");
+		String[] initialSample = SampleGeneratorListener.sampleBeerRatingFromNetwork(net, trainData, rng,
+									maxExampleLength > 0 ? maxExampleLength : 1000, 1, LAGER);
+		log.info("SAMPLE 00: " + initialSample[0]);
+
 		//Do training, and then generate and print samples from network
         String evalStr = "Test set evaluation at epoch %d: Accuracy = %.2f, F1 = %.2f";
 		for(int i=0; i<numEpochs; i++){

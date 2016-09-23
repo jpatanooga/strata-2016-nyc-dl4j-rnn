@@ -22,7 +22,7 @@ public class SampleGeneratorListener implements IterationListener {
     private long iterCount = 0;
 
     private int styleIndex;
-    private int maxCharactersToSample > 0 ? maxCharactersToSample : 1000;
+    private int maxCharactersToSample;
     private Random rng;
     private BeerReviewCharacterIterator reader;
     private MultiLayerNetwork net;
@@ -33,7 +33,7 @@ public class SampleGeneratorListener implements IterationListener {
         this.net = net;
         this.reader = reader;
         this.rng = rng;
-        this.maxCharactersToSample = maxCharactersToSample;
+        this.maxCharactersToSample = maxCharactersToSample > 0 ? maxCharactersToSample : 1000;
         this.styleIndex = styleIndex;
         this.printIterations = printIterations;
     }
