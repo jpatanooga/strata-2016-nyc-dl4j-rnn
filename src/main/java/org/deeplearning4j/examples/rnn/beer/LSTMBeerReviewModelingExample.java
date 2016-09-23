@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Map;
 import java.util.Random;
 
 import org.deeplearning4j.examples.rnn.beer.utils.EpochScoreTracker;
@@ -26,6 +27,7 @@ import org.deeplearning4j.optimize.listeners.ParamAndGradientIterationListener;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
+import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.lossfunctions.LossFunctions.LossFunction;
 import org.slf4j.Logger;
@@ -114,20 +116,21 @@ public class LSTMBeerReviewModelingExample {
             .backprop(true)
 			.build();
 		MultiLayerNetwork net = new MultiLayerNetwork(conf);
-		
+		INDArray params = null;
 		if (loadPrevModel) {
 			log.info("Attempting to continue training from " + modelSavePath);
             try {
-                net = ModelSerializer.restoreMultiLayerNetwork(modelSavePath);
+				MultiLayerNetwork oldNet = ModelSerializer.restoreMultiLayerNetwork(modelSavePath);
+				params = oldNet.params();
             } catch (Exception e) {
                 log.info("Failed to load model from " + modelSavePath);
                 loadPrevModel = false;
-            }
+				log.info("Starting with a new model...");
+            } finally {
+				log.info("Success!");
+			}
 		}
-		if (!loadPrevModel)
-		    log.info("Starting with a new model...");
-
-		net.init();
+		net.init(params, false);
 
 		ArrayList<IterationListener> listeners = new ArrayList<>();
         listeners.add(saver);
