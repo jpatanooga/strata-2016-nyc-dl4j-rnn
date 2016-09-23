@@ -26,6 +26,8 @@ import org.deeplearning4j.optimize.listeners.CollectScoresIterationListener;
 import org.deeplearning4j.optimize.listeners.ParamAndGradientIterationListener;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
+import org.deeplearning4j.ui.flow.FlowIterationListener;
+import org.deeplearning4j.ui.weights.HistogramIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -122,18 +124,19 @@ public class LSTMBeerReviewModelingExample {
             try {
 				MultiLayerNetwork oldNet = ModelSerializer.restoreMultiLayerNetwork(modelSavePath);
 				params = oldNet.params();
+				log.info("Success!");
             } catch (Exception e) {
                 log.info("Failed to load model from " + modelSavePath);
                 loadPrevModel = false;
 				log.info("Starting with a new model...");
-            } finally {
-				log.info("Success!");
-			}
+            }
 		}
 		net.init(params, false);
 
 		ArrayList<IterationListener> listeners = new ArrayList<>();
         listeners.add(saver);
+//		listeners.add(new HistogramIterationListener(1));
+//		listeners.add(new FlowIterationListener(1));
 		listeners.add(new CollectScoresIterationListener(10));
 		listeners.add(new PerformanceListener(everyNEpochs, true));
 //		listeners.add(new ScoreIterationListener(1));
