@@ -214,7 +214,7 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			if (endIdx > fileCharacters.length) {
 				endIdx = fileCharacters.length;
 			}
-			fileCharacters[endIdx-1] = STOPWORD;
+//			fileCharacters[endIdx-1] = STOPWORD;
 
 //			System.out.println( "debug> startIdx: " + startIdx + ", endIdx: " + endIdx );
 
@@ -235,6 +235,8 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 				   nextChar = fileCharacters[j];
 				} catch (NullPointerException npe) {
 					System.err.println("bad review: " + br.text);
+					j = endIdx;
+					continue;
 				}
 				int nextCharIdx = convertCharacterToIndex(nextChar);
 
