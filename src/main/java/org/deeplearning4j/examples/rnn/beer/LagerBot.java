@@ -1,7 +1,9 @@
 package org.deeplearning4j.examples.rnn.beer;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import twitter4j.ResponseList;
 import twitter4j.Status;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
@@ -23,20 +25,37 @@ public class LagerBot {
 	
 	Twitter twitter = null;
 	
+	String pathToLSTMModel = "";
+	
+	ArrayList<String> folksToRespondTo = new ArrayList<String>();
+	
 	public static void main( String[] args ) throws Exception {
 		
 		LagerBot bot = new LagerBot();
 		bot.init();
+
+		while (true) {
+			
+			// hard coded spin loop? bad programming!
+			
+			
+			
+			// 1 . check for mentions
+			
+			
+			bot.scanTimeline();
+			
+			// 2. respond to all mentions
+			
+			// 3. post a beer review
 		
+			//String gen_review = bot.generateReview();
 		
-		// Black buddin amber with two finger filzy wite csouss to fingers of frut as yeticoff-white frothy rete
-		
-		String gen_review = "the color a smakling, light ass, alcosemend vet. Slight smellly sligttren, althe notcate floragiess two"; 
-				//"Bringly, pour. Clear deep ambery amber. Smellis taste-and smerty. Loods but me towherfeam of its one ";
-		
-		bot.postReview(gen_review);
-		
-		//bot.scanTimeline();
+			long minInMS = 1000 * 60 * 10;
+			System.out.println( "Bot Sleepy Time... (10 min)" );
+			Thread.sleep( minInMS );
+		}
+			
 		
 	}
 	
@@ -54,10 +73,54 @@ public class LagerBot {
 		//String review 
 		
 		
+		this.loadLSTMModel();
+		
+	}
+	
+	public void loadLSTMModel() {
+		
+		
+		
+	}
+	
+	public String generateReview() {
+		
+		String review = "";
+		
+		// TODO: generate review from model here DAVE
+		
+		
+		if (120 < review.length()) {
+			review = review.substring(0, 120);
+		}
+		
+		return review;
+		
 	}
 	
 	public void scanTimeline() throws TwitterException {
 		
+		System.out.println( "Scan Timeline..." );
+		
+		this.folksToRespondTo.clear();
+		
+		ResponseList<Status> tweetsAtUs = this.twitter.getMentionsTimeline();
+		
+		for ( int x = 0; x < tweetsAtUs.size(); x++ ) {
+		
+			System.out.println( tweetsAtUs.get( x ).getUser().getScreenName() + " tweeted at us: " + tweetsAtUs.get( x ).getText() );
+			
+			String replyTo = tweetsAtUs.get( x ).getUser().getScreenName();
+			
+			String replyTweet = replyTo + " " + this.generateReview();
+			
+			this.postReview( replyTweet );
+			
+		}
+		
+		
+		
+		/*
 		// The factory instance is re-useable and thread safe.
 	    //Twitter twitter = TwitterFactory.getSingleton();
 	    List<Status> statuses = this.twitter.getHomeTimeline();
@@ -65,7 +128,8 @@ public class LagerBot {
 	    for (Status status : statuses) {
 	        System.out.println(status.getUser().getName() + ":" +
 	                           status.getText());
-	    }		
+	    }	
+	    */	
 		
 	}
 	
