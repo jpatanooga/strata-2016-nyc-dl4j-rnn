@@ -4,13 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Random;
+import java.nio.file.NoSuchFileException;
+import java.util.*;
 
 import org.deeplearning4j.datasets.iterator.DataSetIterator;
 import org.deeplearning4j.examples.rnn.beer.schema.json.Beer;
@@ -29,24 +24,22 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	private char[] validCharacters;
 	private Map<Character,Integer> charToIdxMap;
 	private char[] fileCharacters;
-	private int exampleLength;
+	private int exampleLength = 0;
 	private int miniBatchSize;
-	private int numExamplesToFetch;
+	private int numExamplesToFetch = 0;
 	private int examplesSoFar = 0;
 	private Random rng;
-	private final int numCharacters;
-	private final boolean alwaysStartAtNewLine;
-	
-	public int totalExamplesinDataset = 0;
-	
+	private int numCharacters = 0;
+	public static final char STOPWORD = 0;
+
 	// account for beer review rating columns
 	int extraRatingColumns = 5;
 	
 	BeerReviewReader reviewReader = null;
 	BeerDictionary beerDictionary = null;
 	
-	public BeerReviewCharacterIterator(String path, String beerDictionaryFilePath, int miniBatchSize, int exampleSize, int numExamplesToFetch ) throws IOException {
-		this(path, beerDictionaryFilePath, Charset.defaultCharset(),miniBatchSize,exampleSize,numExamplesToFetch,getDefaultCharacterSet(), new Random(),true);
+	public BeerReviewCharacterIterator(String path, String beerDictionaryFilePath, int miniBatchSize, int exampleLength, int numExamplesToFetch ) throws IOException {
+		this(path, beerDictionaryFilePath, Charset.defaultCharset(),miniBatchSize,exampleLength,numExamplesToFetch,getDefaultCharacterSet(), new Random());
 	}
 	
 	/**
@@ -58,12 +51,11 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	 * @param numExamplesToFetch Total number of examples to fetch (must be multiple of miniBatchSize). Used in hasNext() etc methods
 	 * @param validCharacters Character array of valid characters. Characters not present in this array will be removed
 	 * @param rng Random number generator, for repeatability if required
-	 * @param alwaysStartAtNewLine if true, scan backwards until we find a new line character (up to MAX_SCAN_LENGTH in case
 	 *  of no new line characters, to avoid scanning entire file)
 	 * @throws IOException If text file cannot  be loaded
 	 */
 	public BeerReviewCharacterIterator(String textFilePath, String beerDictionaryFilePath, Charset textFileEncoding, int miniBatchSize, int exampleLength,
-			int numExamplesToFetch, char[] validCharacters, Random rng, boolean alwaysStartAtNewLine ) throws IOException {
+			int numExamplesToFetch, char[] validCharacters, Random rng) throws IOException {
 		if( !new File(textFilePath).exists()) throw new IOException("Could not access file (does not exist): " + textFilePath);
 		if(numExamplesToFetch % miniBatchSize != 0 ) throw new IllegalArgumentException("numExamplesToFetch must be a multiple of miniBatchSize");
 		if( miniBatchSize <= 0 ) throw new IllegalArgumentException("Invalid miniBatchSize (must be >0)");
@@ -72,63 +64,28 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		this.miniBatchSize = miniBatchSize;
 		this.numExamplesToFetch = numExamplesToFetch;
 		this.rng = rng;
-		this.alwaysStartAtNewLine = alwaysStartAtNewLine;
 		
 		//Store valid characters is a map for later use in vectorization
 		charToIdxMap = new HashMap<>();
 		for( int i=0; i<validCharacters.length; i++ ) charToIdxMap.put(validCharacters[i], i);
-		numCharacters = validCharacters.length;
+		assert(!charToIdxMap.containsKey(STOPWORD));
+		charToIdxMap.put(STOPWORD, validCharacters.length);
+		numCharacters = validCharacters.length + 1;
 		
 		//Load file and convert contents to a char[] 
 		boolean newLineValid = charToIdxMap.containsKey('\n');
-		
-		/*
-		List<String> lines = Files.readAllLines(new File(textFilePath).toPath(),textFileEncoding);
-		
-		int maxSize = lines.size();	//add lines.size() to account for newline characters at end of each line 
-		for( String s : lines ) { 
-			maxSize += s.length();
-		}
-		
-		// create array to contain all lines -> characters 
-		char[] characters = new char[maxSize];
-		
-		// for each line, convert into array
-		int currIdx = 0;
-		for( String s : lines ){
-			char[] thisLine = s.toCharArray();
-			for( int i=0; i<thisLine.length; i++ ){
-				if( !charToIdxMap.containsKey(thisLine[i]) ) continue;
-				characters[currIdx++] = thisLine[i];
-			}
-			if(newLineValid) characters[currIdx++] = '\n';
-		}
-		
-		if( currIdx == characters.length ){
-			fileCharacters = characters;
-		} else {
-			fileCharacters = Arrays.copyOfRange(characters, 0, currIdx);
-		}
-		if( exampleLength >= fileCharacters.length ) throw new IllegalArgumentException("exampleLength="+exampleLength
-				+" cannot exceed number of valid characters in file ("+fileCharacters.length+")");
-		
-		int nRemoved = maxSize - fileCharacters.length;
-		*/
 		
 		this.beerDictionary = new GroupedBeerDictionary();
 		this.beerDictionary.loadBeerEntries(beerDictionaryFilePath);
 		this.beerDictionary.printBeerStyleStats();
 		
-		// TODO: init reader
 		this.reviewReader = new BeerReviewReader( textFilePath );
         this.reviewReader.init();
-		
-		this.totalExamplesinDataset = this.reviewReader.countReviews();
-		
-		System.out.println("\nFound reviews: " + this.totalExamplesinDataset + "\n\n");
-		
-	//	System.out.println("Loaded and converted file: " + fileCharacters.length + " valid characters of "
-	//	+ maxSize + " total characters (" + nRemoved + " removed)");
+
+		int totalExamplesinDataset = this.reviewReader.countReviews();
+		System.out.println("\nFound reviews: " + totalExamplesinDataset + "\n\n");
+		if (this.numExamplesToFetch <= 0)
+			this.numExamplesToFetch = totalExamplesinDataset;
 	}
 	
 	/** A minimal character set, with a-z, A-Z, 0-9 and common punctuation etc */
@@ -144,13 +101,13 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		for( Character c : validChars ) out[i++] = c;
 		return out;
 	}
-	
+
 	/** As per getMinimalCharacterSet(), but with a few extra characters */
 	public static char[] getDefaultCharacterSet(){
 		List<Character> validChars = new LinkedList<>();
 		for(char c : getMinimalCharacterSet() ) validChars.add(c);
 		char[] additionalChars = {'@', '#', '$', '%', '^', '*', '{', '}', '[', ']', '/', '+', '_',
-				'\\', '|', '<', '>'};
+				'\\', '|', '<', '>', '=', '`'};
 		for( char c : additionalChars ) validChars.add(c);
 		char[] out = new char[validChars.size()];
 		int i=0;
@@ -158,20 +115,20 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 		return out;
 	}
 	
-	public char convertIndexToCharacter( int idx ){
+	public char convertIndexToCharacter( int idx ) {
+		if (idx == validCharacters.length)
+			return STOPWORD;
 		return validCharacters[idx];
 	}
 	
-	public int convertCharacterToIndex( char c ){
-		return charToIdxMap.get(c);
-	}
+	public int convertCharacterToIndex( char c ){ return charToIdxMap.get(c); }
 	
 	public char getRandomCharacter(){
-		return validCharacters[(int) (rng.nextDouble()*validCharacters.length)];
+		return validCharacters[(int) (rng.nextDouble()*numCharacters)];
 	}
 
 	public boolean hasNext() {
-		return examplesSoFar + miniBatchSize <= numExamplesToFetch;
+		return (numExamplesToFetch <= 0 || examplesSoFar + miniBatchSize <= numExamplesToFetch) && reviewReader.hasNext();
 	}
 
 	public DataSet next() {
@@ -179,14 +136,10 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 	}
 
 	private char[] convertReviewToCharacters( BeerReview br ) {
-		
-		
-		
-		// for each line, convert into array
 		int currIdx = 0;
 		char[] thisLine = br.text.toCharArray(); //s.toCharArray();
 		
-		char[] characters = new char[ thisLine.length ];
+		char[] characters = new char[ thisLine.length + 1 ];
 		
 		for( int i=0; i< thisLine.length; i++ ){
 			if( !charToIdxMap.containsKey(thisLine[i]) ) {
@@ -194,223 +147,142 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 			}
 			characters[currIdx++] = thisLine[i];
 		}
-		
+		characters[currIdx] = STOPWORD;
 		return characters;
-		
 	}
-	
 
-	/**
-	 * TODO: how do we handle this for different type review hints per mini-batch entry?
-	 * 
-	 * @param ndArray
-	 * @param rating_overall
-	 * @param rating_taste
-	 * @param rating_appearance
-	 * @param rating_palate
-	 * @param rating_aroma
-	 */
-	public void setReviewHints( INDArray ndArray, float rating_overall, float rating_taste, float rating_appearance, float rating_palate, float rating_aroma) {
-		/*
-		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset, characterTimeStep }, rating_appearance );
-		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 1, characterTimeStep }, rating_aroma );
-		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 2, characterTimeStep }, rating_overall );
-		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 3, characterTimeStep }, rating_palate );
-		ndArray.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 4, characterTimeStep }, rating_taste );
-		*/
-		
-	}
-	
-	/**
-	 * main method to produce vectors to modeling algorithm / workflow
-	 * 
-	 * 
-	 * TODO:
-	 * 		-	add columns for: { 
-					public float rating_overall = 0.0f;
-					public float rating_taste = 0.0f;
-					public float rating_appearance = 0.0f;
-					public float rating_palate = 0.0f;
-					public float rating_aroma = 0.0f;
-	 * 
-	 *		-	 
-	 * 
-	 * 
-	 */
 	public DataSet next(int miniBatchSize) {
 		
-		if( examplesSoFar+miniBatchSize > numExamplesToFetch ) {
-			throw new NoSuchElementException();
-		}
+//		if(numExamplesToFetch > 0 && examplesSoFar + miniBatchSize > numExamplesToFetch ) {
+//			throw new NoSuchElementException();
+//		}
 		
 		//System.out.println( "NEXT> batch size: " + miniBatchSize );
 		
-		int beerStyleColumnCount = this.beerDictionary.getBeerStyleCount();
-		
-		int inputColumnCount = numCharacters + extraRatingColumns + beerStyleColumnCount;
-		int outputColumnCount = numCharacters;
-		
-		//Allocate space: { mini-batch size, number columns, number timesteps }
-		INDArray input = Nd4j.zeros(new int[]{ miniBatchSize, inputColumnCount, exampleLength });
-		INDArray labels = Nd4j.zeros(new int[]{ miniBatchSize, outputColumnCount, exampleLength });
-		
-		// TODO: at this point we probably need to consider moving the beer review into the fileCharacters array
-		
-		
-//		int maxStartIdx = fileCharacters.length - exampleLength;
-		
-		BeerReview brLastGood = null;
-		
 		//Randomly select a subset of the file. No attempt is made to avoid overlapping subsets
 		// of the file in the same minibatch
-		for( int miniBatchIndex = 0; miniBatchIndex < miniBatchSize; miniBatchIndex++ ){
-			
-			// we have to get each review separately
-			
-			BeerReview br = null;
-			
+		int maxLength = 0;
+		List<BeerReview> reviews = new ArrayList<>();
+		while(reviewReader.hasNext() && reviews.size() < miniBatchSize) {
+			BeerReview review = null;
 			try {
-				//br = this.reviewReader.getNextReview();
-				br = this.reviewReader.getNextFilteredReview( (GroupedBeerDictionary) this.beerDictionary );
-				if (null == br) {
-					System.err.println( "Returned a null beer review, using last good..." );
-					br = brLastGood;
-				} else {
-					brLastGood = br;
-				}
-				
+			    review = this.reviewReader.getNextReview();
+//			      review = this.reviewReader.getNextFilteredReview((GroupedBeerDictionary) this.beerDictionary);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
+				throw new NoSuchElementException();
 			}
-			
+			if (review == null)
+				break;
+			maxLength = review.text.length() > maxLength ? review.text.length() : maxLength;
+			reviews.add(review);
+		}
+		if (this.exampleLength > 0)
+			maxLength = this.exampleLength;
+
+		int beerStyleColumnCount = this.beerDictionary.getBeerStyleCount();
+		int inputColumnCount = numCharacters + extraRatingColumns + beerStyleColumnCount;
+		int outputColumnCount = numCharacters;
+
+		//Allocate space: { mini-batch size, number columns, number timesteps }
+		INDArray input  = Nd4j.zeros(new int[]{ reviews.size(), inputColumnCount, maxLength });
+		INDArray labels = Nd4j.zeros(new int[]{ reviews.size(), outputColumnCount, maxLength });
+		INDArray mask   = Nd4j.zeros(new int[]{ reviews.size(), maxLength });
+
+		for (int miniBatchIndex = 0; miniBatchIndex < reviews.size(); miniBatchIndex++) {
+			BeerReview br = reviews.get(miniBatchIndex);
 			// JOIN: br.beer_id -> beer.style -> beerStyle.index
 			// MEANING: we need to pre-cache this join in the beer dictionary
 			// SO: for each beer: link beer_id -> beer_style_index
-			
+
 			int styleIndex = this.beerDictionary.lookupBeerStyleIndexByBeerID( br.beer_id );
 			String styleFull = this.beerDictionary.lookupBeerStyleByBeerID( br.beer_id );
 			
-			//System.out.println( "Style Index Lookup: " + br.beer_id + " -> " + styleIndex );
-			
-			/*
-			// lookup the beer type
-			Beer beerTmp = this.beerDictionary.getBeerByStyle( br.beer.style );
-			//String beerType = beer.style;
-			if (null != beerTmp) {
-				br.beer = beerTmp;
-			}
-			*/
-			
-		//	System.out.println( br.text );
-		//	System.out.println( br.rating_aroma );
-			
+//			System.out.println( "Style Index Lookup: " + br.beer_id + " -> " + styleIndex );
+//
+//			System.out.println( br.text );
+//			System.out.println( br.rating_aroma );
 			fileCharacters = this.convertReviewToCharacters( br );
 			
 			if (fileCharacters.length < 10) {
 				System.err.println( "Small review text length! [count: " + this.reviewReader.getCount() + "]" );
 				System.err.println( "Text: " + br.text );
-				
 			}
 			
 			int startIdx = 0; //(int) (rng.nextDouble()*maxStartIdx);
-			int endIdx = startIdx + exampleLength;
-			if (endIdx > fileCharacters.length - 1) {
-				endIdx = fileCharacters.length - 1;
+			int endIdx = startIdx + maxLength;
+			if (endIdx > fileCharacters.length) {
+				endIdx = fileCharacters.length;
 			}
-			//int scanLength = 0;
-/*			if(alwaysStartAtNewLine){
-				while(startIdx >= 1 && fileCharacters[startIdx-1] != '\n' && scanLength++ < MAX_SCAN_LENGTH ){
-					startIdx--;
-					endIdx--;
-				}
-			}
-	*/		
-			//System.out.println( "debug> startIdx: " + startIdx + ", endIdx: " + endIdx );
-			
-			int currCharIdx = charToIdxMap.get( fileCharacters[ startIdx ] );	//Current input
-			int characterTimeStep = 0;
-			
+//			fileCharacters[endIdx-1] = STOPWORD;
+
+//			System.out.println( "debug> startIdx: " + startIdx + ", endIdx: " + endIdx );
+
 			int staticColumnBaseOffset = numCharacters;
-			
-			int styleColumnBaseOffset = staticColumnBaseOffset + 5;
+			int styleColumnBaseOffset = staticColumnBaseOffset + numRatings();
 			int styleIndexColumn = styleColumnBaseOffset + styleIndex; // add the base to the index
 			
 //			System.out.println( "style index base: " + styleColumnBaseOffset + ", offset: " + styleIndexColumn + ", Name: " + styleFull );
-			
-			
-			for ( int j = startIdx + 1; j <= endIdx; j++, characterTimeStep++ ){
-				
-				int nextCharIdx = 0;
+
+			char currChar = STOPWORD; //fileCharacters[ startIdx ]
+			int currCharIdx = convertCharacterToIndex(currChar);
+			int characterTimeStep = 0;
+//			for ( int j = startIdx + 1; j <= endIdx; j++, characterTimeStep++ ){
+			for ( int j = startIdx; j < endIdx; j++, characterTimeStep++ ){
+				char nextChar = STOPWORD;
 				
 				try {
-				   nextCharIdx = charToIdxMap.get( fileCharacters[ j ] );		//Next character to predict
+				   nextChar = fileCharacters[j];
 				} catch (NullPointerException npe) {
 					System.err.println("bad review: " + br.text);
+					j = endIdx;
+					continue;
 				}
-				
-				// mini-batch-index, column-index, timestep-index -> 1.0 
+				int nextCharIdx = convertCharacterToIndex(nextChar);
+
+				// mini-batch-index, column-index, timestep-index -> 1.0
 				// for this mini batch example
 				//		input -> set the column index for the character id-index -> at the current timestep (c)
 				input.putScalar(new int[]{ miniBatchIndex, currCharIdx, characterTimeStep }, 1.0);
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset, characterTimeStep },
+								(br.rating_appearance-1)/2.0-1 ); //br.rating_appearance );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 1, characterTimeStep },
+								(br.rating_aroma-1)/2.0-1 ); //br.rating_aroma );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 2, characterTimeStep },
+								(br.rating_overall-1)/2.0-1 ); //br.rating_overall );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 3, characterTimeStep },
+								(br.rating_palate-1)/2.0-1 ); //br.rating_palate );
+				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 4, characterTimeStep },
+								(br.rating_taste-1)/2.0-1 ); //br.rating_taste );
+				input.putScalar(new int[]{ miniBatchIndex, styleIndexColumn, characterTimeStep }, 1.0 );
+
+				mask.putScalar(new int[]{ miniBatchIndex, characterTimeStep }, 1.0);
+
 				//		labels -> set the column index for the next character id-index -> at the current timestep (c)
 				labels.putScalar(new int[]{ miniBatchIndex, nextCharIdx, characterTimeStep }, 1.0);
-				currCharIdx = nextCharIdx;
-				
-				// note: effectively mapping { input -> output }, saying at this timestep when we see X character in the input, the output should show Y character
-				
-				//System.out.println( fileCharacters[ j - 1 ] + " -> " + currCharIdx );
-				
-				// setup static columns
-				
 
-				
-				// TODO: consider --- do we put this only in the input or the output too?
-				
-				// input
-				
-				
-				
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset, characterTimeStep }, br.rating_appearance );
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 1, characterTimeStep }, br.rating_aroma );
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 2, characterTimeStep }, br.rating_overall );
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 3, characterTimeStep }, br.rating_palate );
-				input.putScalar(new int[]{ miniBatchIndex, staticColumnBaseOffset + 4, characterTimeStep }, br.rating_taste );
-				
-				// TODO: handle beer style ID
-				
-				// set the correct style column index as 1.0
-				
-				
-				input.putScalar(new int[]{ miniBatchIndex, styleIndexColumn, characterTimeStep }, 1.0 );
-				
-				// TODO: do we handle user ID?
-				
+				currChar = nextChar;
+				currCharIdx = nextCharIdx;
 			} // for all of the characters -> write to a vector
-			
-			
 		} // for
-		
+
 		examplesSoFar += miniBatchSize;
-		return new DataSet(input,labels);
+		INDArray mask2 = Nd4j.zeros(new int[]{ miniBatchSize, maxLength });
+		Nd4j.copy(mask, mask2);
+		return new DataSet(input,labels, mask, mask2);
 	}
 
 	public int totalExamples() {
 		return numExamplesToFetch;
 	}
 
-	public int inputColumns() {
-		
-		int beerStyleColumnCount = this.beerDictionary.getBeerStyleCount();
-		
-		return numCharacters + extraRatingColumns + beerStyleColumnCount;
-	}
+	public int inputColumns() { return numCharacters + extraRatingColumns + beerDictionary.getBeerStyleCount(); }
 	
-	public int characterColumns() {
-		
-		return numCharacters;
-		
-	}
+	public int numCharacterColumns() { return numCharacters; }
+
+	public int numRatings() { return 5; }
+
+	public int numStyles() { return this.beerDictionary.getBeerStyleCount(); }
 
 	public int totalOutcomes() {
 		return numCharacters;
@@ -418,12 +290,13 @@ public class BeerReviewCharacterIterator implements DataSetIterator {
 
 	public void reset() {
 		//System.out.println( "Resetting Beer Review Character Iterator..." );
-		try {
-			this.reviewReader.init();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		this.reviewReader.reset();
+//		try {
+//			this.reviewReader.init();
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		examplesSoFar = 0;
 	}
 

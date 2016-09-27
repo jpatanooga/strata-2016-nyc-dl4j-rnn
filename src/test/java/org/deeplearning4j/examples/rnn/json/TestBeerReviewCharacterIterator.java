@@ -8,6 +8,8 @@ import org.deeplearning4j.examples.rnn.beer.utils.NDArrayUtils;
 import org.junit.Test;
 import org.nd4j.linalg.dataset.DataSet;
 
+import java.io.IOException;
+
 public class TestBeerReviewCharacterIterator {
 
 	@Test
@@ -22,8 +24,8 @@ public class TestBeerReviewCharacterIterator {
 		int examplesPerEpoch = 240000;
 		int miniBatchSize = 40;
 		
-		BeerReviewCharacterIterator iter = LSTMBeerReviewModelingExample.getBeerReviewIterator( miniBatchSize, 100, examplesPerEpoch, pathToData, pathToBeerData);
-		
+		BeerReviewCharacterIterator iter = new BeerReviewCharacterIterator(pathToData, pathToBeerData, miniBatchSize,
+																			100, examplesPerEpoch);
 		int count = 0;
 		while (iter.hasNext()) {
 			
