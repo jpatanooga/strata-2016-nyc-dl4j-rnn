@@ -1,16 +1,21 @@
 package org.deeplearning4j.examples.rnn.beer;
 
-import org.deeplearning4j.examples.rnn.beer.BeerReviewCharacterIterator;
+import org.apache.spark.sql.catalyst.plans.logical.Sample;
+import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.api.Model;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.optimize.api.IterationListener;
+import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.nio.charset.Charset;
+import java.nio.file.FileSystems;
 import java.util.Random;
+import java.lang.Math;
 
 /**
  * Created by davekale on 9/20/16.
@@ -24,15 +29,22 @@ public class SampleGeneratorListener implements IterationListener {
     private int styleIndex;
     private int maxCharactersToSample;
     private Random rng;
+    private double temperature = 0;
     private BeerReviewCharacterIterator reader;
     private MultiLayerNetwork net;
     private boolean invoked = false;
 
     public SampleGeneratorListener(MultiLayerNetwork net, BeerReviewCharacterIterator reader, Random rng,
                                    int maxCharactersToSample, int styleIndex, int printIterations) {
+        this(net, reader, rng, 0, maxCharactersToSample, styleIndex, printIterations);
+    }
+
+    public SampleGeneratorListener(MultiLayerNetwork net, BeerReviewCharacterIterator reader, Random rng,
+                                   double temperature, int maxCharactersToSample, int styleIndex, int printIterations) {
         this.net = net;
         this.reader = reader;
         this.rng = rng;
+        this.temperature = temperature;
         this.maxCharactersToSample = maxCharactersToSample > 0 ? maxCharactersToSample : 1000;
         this.styleIndex = styleIndex;
         this.printIterations = printIterations;
@@ -54,19 +66,27 @@ public class SampleGeneratorListener implements IterationListener {
             printIterations = 1;
         if (iterCount % printIterations == 0) {
             invoke();
-            String[] samples = sampleBeerRatingFromNetwork(net, reader, rng, maxCharactersToSample, 1, styleIndex);
+            String[] samples = sampleBeerRatingFromNetwork(net, reader, rng, temperature, maxCharactersToSample, 1, styleIndex);
 
-            log.info("----- Generating Lager Beer Review Samples -----");
+            System.out.println("----- Generating Lager Beer Review Samples -----");
             for (int j = 0; j < samples.length; j++) {
-                log.info("SAMPLE " + j + ": " + samples[j]);
+                System.out.println("SAMPLE " + j + ": " + samples[j]);
             }
         }
         iterCount++;
     }
 
+    public static String[] sampleBeerRatingFromNetwork(MultiLayerNetwork net, BeerReviewCharacterIterator iter, Random rng,
+                                                       double temperature, int maxCharactersToSample, int numSamples,
+                                                       int styleIndex) {
+        return sampleBeerRatingFromNetwork(net, iter, rng, temperature, maxCharactersToSample, numSamples, styleIndex,
+                                            5, 5, 5, 5, 5);
+    }
+
     public static String[] sampleBeerRatingFromNetwork(MultiLayerNetwork net, BeerReviewCharacterIterator iter,
-                                                        Random rng, int maxCharactersToSample, int numSamples,
-                                                        int styleIndex) {
+                                                       Random rng, double temperature, int maxCharactersToSample,
+                                                       int numSamples, int styleIndex, int overallRating, int tasteRating,
+                                                       int appearanceRating, int palateRating, int aromaRating) {
         numSamples = numSamples > 5 ? 5 : numSamples;
         int staticColumnBaseOffset = iter.numCharacterColumns();
         int styleColumnBaseOffset = staticColumnBaseOffset + iter.numRatings();
@@ -77,11 +97,11 @@ public class SampleGeneratorListener implements IterationListener {
 
         INDArray input = Nd4j.zeros(new int[]{numSamples, iter.inputColumns()});
         for (int s = 0; s < numSamples; s++) {
-            input.putScalar(new int[]{s, staticColumnBaseOffset    }, 1); //5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 1}, 1); //5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 2}, s/2.0 - 1); //s + 1);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 3}, 1); //5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 4}, 1); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset    }, tasteRating); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 1}, appearanceRating); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 2}, overallRating); //s + 1);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 3}, palateRating); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 4}, aromaRating); //5);
             input.putScalar(new int[]{s, styleIndexColumn}, 1.0);
         }
 
@@ -90,6 +110,12 @@ public class SampleGeneratorListener implements IterationListener {
         for (int s = 0; s < numSamples; s++) {
             sb[s] = new StringBuilder();
             continueBuilding[s] = true;
+        }
+
+        boolean stopAutomatically = false;
+        if (maxCharactersToSample <= 0) {
+            maxCharactersToSample = 5000;
+            stopAutomatically = true;
         }
 
         int[] prevCharIdx = new int[numSamples];
@@ -109,10 +135,19 @@ public class SampleGeneratorListener implements IterationListener {
                 double[] outputProbDistribution = new double[iter.numCharacterColumns()];
                 for (int j = 0; j < outputProbDistribution.length; j++)
                     outputProbDistribution[j] = output.getDouble(s, j);
+                if (temperature > 0) {
+                    double outputSum = 0;
+                    for (int j = 0; j < outputProbDistribution.length; j++) {
+                        outputProbDistribution[j] = Math.exp(outputProbDistribution[j] * temperature);
+                        outputSum += outputProbDistribution[j];
+                    }
+                    for (int j = 0; j < outputProbDistribution.length; j++)
+                        outputProbDistribution[j] /= outputSum;
+                }
                 prevCharIdx[s] = currCharIdx[s];
                 currCharIdx[s] = sampleFromDistribution(outputProbDistribution, rng);
-//                if (currCharIdx[s] == iter.STOPWORD)
-//                    continueBuilding[s] = false;
+                if (stopAutomatically && currCharIdx[s] == iter.STOPWORD)
+                    continueBuilding[s] = false;
                 if (continueBuilding[s])
                     sb[s].append(iter.convertIndexToCharacter(currCharIdx[s]));
             }
@@ -124,7 +159,7 @@ public class SampleGeneratorListener implements IterationListener {
         return out;
     }
 
-    private static int sampleFromDistribution( double[] distribution, Random rng ){
+    private static int sampleFromDistribution( double[] distribution, Random rng){
         double d = rng.nextDouble();
         double sum = 0.0;
         for( int i=0; i<distribution.length; i++ ){
@@ -133,5 +168,68 @@ public class SampleGeneratorListener implements IterationListener {
         }
         //Should never happen if distribution is a valid probability distribution
         throw new IllegalArgumentException("Distribution is invalid? d="+d+", sum="+sum);
+    }
+
+    public static void main(String[] args) throws Exception {
+        System.out.println("ARGS: " + args.length);
+        int rngSeed = 74756840;
+        Random rng = new Random(rngSeed);
+        double temperature = 16;
+
+        String SEP = FileSystems.getDefault().getSeparator();
+        String dataPath = System.getenv("BEER_REVIEW_PATH");
+        File tempFile = new File(dataPath);
+        assert(tempFile.exists() && !tempFile.isDirectory());
+        String beerIdDataPath = dataPath + SEP + "beers_all.json";
+        String reviewTrainingDataPath = dataPath + SEP + "reviews_top-train.json";
+
+        char[] validCharacters = BeerReviewCharacterIterator.getDefaultCharacterSet();
+        BeerReviewCharacterIterator trainData = new BeerReviewCharacterIterator(reviewTrainingDataPath, beerIdDataPath,
+                                                            Charset.forName("UTF-8"), 128, 0, 0, validCharacters, rng);
+
+        String baseModelPath = System.getenv("MODEL_SAVE_PATH");
+        ModelSaver saver = new ModelSaver(baseModelPath, 1);
+        String modelSavePath = saver.getModelSavePath();
+        System.out.println("Attempting to continue training from " + modelSavePath);
+        MultiLayerNetwork net = null;
+        try {
+            net = ModelSerializer.restoreMultiLayerNetwork(modelSavePath);
+        } catch (Exception e) {
+            System.out.println("Failed to load model from " + modelSavePath);
+            System.exit(1);
+        }
+
+        if (net != null) {
+            //Print the  number of parameters in the network (and for each layer)
+            Layer[] layers = net.getLayers();
+            int totalNumParams = 0;
+            for (int i = 0; i < layers.length; i++) {
+                int nParams = layers[i].numParams();
+                System.out.println("Number of parameters in layer " + i + ": " + nParams);
+                totalNumParams += nParams;
+            }
+            System.out.println("Total number of network parameters: " + totalNumParams);
+
+            int nbSamples = 10;
+            for (int styleIndex = 0; styleIndex < 5; styleIndex++) {
+                for (int rating = 1; rating <= 5; rating++) {
+                    System.out.println("Generating " + nbSamples + " of a " + rating + " star " + styleIndex);
+                    System.out.println("--------------------");
+                    String[] reviews = sampleBeerRatingFromNetwork(net, trainData, rng, temperature, 0, nbSamples / 2,
+                            rating, rating, rating, rating, rating, rating);
+                    int i = 0;
+                    for (String review : reviews) {
+                        System.out.println("SAMPLE " + ++i + ":" + review);
+                    }
+                    reviews = sampleBeerRatingFromNetwork(net, trainData, rng, temperature, 2000, nbSamples / 2, rating,
+                            rating, rating, rating, rating, rating);
+                    for (String review : reviews) {
+                        System.out.println("SAMPLE " + ++i + ":" + review);
+                    }
+                    System.out.println("************************************\n");
+                }
+                System.out.println("************************************");
+            }
+        }
     }
 }

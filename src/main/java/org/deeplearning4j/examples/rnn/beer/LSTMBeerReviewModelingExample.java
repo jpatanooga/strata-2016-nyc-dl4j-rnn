@@ -48,6 +48,7 @@ public class LSTMBeerReviewModelingExample {
 		int tbpttLength = Integer.parseInt(args[3]);          //Truncated backprop through time, i.e., do parameter updates ever 50 characters
 		int numEpochs = Integer.parseInt(args[4]);			  //Total number of training + sample generation epochs
 		int nSamplesToGenerate = 5;                           //Number of samples to generate after each training epoch
+		double temperature = Double.parseDouble(args[5]);
         boolean loadPrevModel = true;
         String generationInitialization = "~"; //Optional character initialization; a random character is used if null
 		// Above is Used to 'prime' the LSTM with a character sequence to continue/complete.
@@ -144,7 +145,7 @@ public class LSTMBeerReviewModelingExample {
 		File gradientFile = new File(baseModelPath + FileSystems.getDefault().getSeparator() + "gradients.tsv");
 		listeners.add(new ParamAndGradientIterationListener(everyNEpochs, true, false, false, true, false, true, true,
 				gradientFile, "\t"));
-        listeners.add(new SampleGeneratorListener(net, trainData, rng, maxExampleLength, LAGER, everyNEpochs));
+        listeners.add(new SampleGeneratorListener(net, trainData, rng, temperature, maxExampleLength, LAGER, everyNEpochs));
 		net.setListeners(listeners);
 
 		//Print the  number of parameters in the network (and for each layer)
@@ -162,7 +163,7 @@ public class LSTMBeerReviewModelingExample {
 		long totalTrainingTimeMS = 0;
 
 		log.info("----- Generating Initial Lager Beer Review Sample -----");
-		String[] initialSample = SampleGeneratorListener.sampleBeerRatingFromNetwork(net, trainData, rng,
+		String[] initialSample = SampleGeneratorListener.sampleBeerRatingFromNetwork(net, trainData, rng, temperature,
 									maxExampleLength > 0 ? maxExampleLength : 1000, 1, LAGER);
 		log.info("SAMPLE 00: " + initialSample[0]);
 
@@ -220,7 +221,8 @@ public class LSTMBeerReviewModelingExample {
             trainData.reset();
             testData.reset();
 
-            for (String s : SampleGeneratorListener.sampleBeerRatingFromNetwork(net, trainData, rng, maxExampleLength, 5, 2))
+            for (String s : SampleGeneratorListener.sampleBeerRatingFromNetwork(net, trainData, rng, temperature,
+																				maxExampleLength, 5, 2))
                 log.info("SAMPLE: " + s);
             int a = 1;
 		}
