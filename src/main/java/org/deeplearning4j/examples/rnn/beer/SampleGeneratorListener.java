@@ -148,7 +148,7 @@ public class SampleGeneratorListener implements IterationListener {
                 prevCharIdx[s] = currCharIdx[s];
                 int newCharIdx = iter.STOPWORD;
                 if (!stopAutomatically)
-                    while (newCharIdx != iter.STOPWORD)
+                    while (newCharIdx == iter.STOPWORD)
                         newCharIdx = sampleFromDistribution(outputProbDistribution, rng);
                 if (stopAutomatically && newCharIdx == iter.STOPWORD)
                     continueBuilding[s] = false;
