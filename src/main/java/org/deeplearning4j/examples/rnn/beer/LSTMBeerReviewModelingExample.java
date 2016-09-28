@@ -1,12 +1,9 @@
 package org.deeplearning4j.examples.rnn.beer;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Map;
 import java.util.Random;
 
 import org.deeplearning4j.examples.rnn.beer.utils.EpochScoreTracker;
@@ -25,9 +22,6 @@ import org.deeplearning4j.optimize.api.IterationListener;
 import org.deeplearning4j.optimize.listeners.CollectScoresIterationListener;
 import org.deeplearning4j.optimize.listeners.ParamAndGradientIterationListener;
 import org.deeplearning4j.optimize.listeners.PerformanceListener;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.deeplearning4j.ui.flow.FlowIterationListener;
-import org.deeplearning4j.ui.weights.HistogramIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;

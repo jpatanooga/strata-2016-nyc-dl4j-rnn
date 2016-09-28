@@ -97,11 +97,11 @@ public class SampleGeneratorListener implements IterationListener {
 
         INDArray input = Nd4j.zeros(new int[]{numSamples, iter.inputColumns()});
         for (int s = 0; s < numSamples; s++) {
-            input.putScalar(new int[]{s, staticColumnBaseOffset    }, tasteRating); //5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 1}, appearanceRating); //5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 2}, overallRating); //s + 1);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 3}, palateRating); //5);
-            input.putScalar(new int[]{s, staticColumnBaseOffset + 4}, aromaRating); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset    }, (tasteRating-1)/2.0-1); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 1}, (appearanceRating-1)/2.0-1); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 2}, (overallRating-1)/2.0-1); //s + 1);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 3}, (palateRating-1)/2.0-1); //5);
+            input.putScalar(new int[]{s, staticColumnBaseOffset + 4}, (aromaRating-1)/2.0-1); //5);
             input.putScalar(new int[]{s, styleIndexColumn}, 1.0);
         }
 
