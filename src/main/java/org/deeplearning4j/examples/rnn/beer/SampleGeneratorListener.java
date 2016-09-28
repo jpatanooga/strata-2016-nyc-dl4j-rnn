@@ -144,10 +144,15 @@ public class SampleGeneratorListener implements IterationListener {
                     for (int j = 0; j < outputProbDistribution.length; j++)
                         outputProbDistribution[j] /= outputSum;
                 }
+                int prevPrevCharIdx = prevCharIdx[s];
                 prevCharIdx[s] = currCharIdx[s];
-                currCharIdx[s] = sampleFromDistribution(outputProbDistribution, rng);
-                if (stopAutomatically && currCharIdx[s] == iter.STOPWORD)
+                int newCharIdx = iter.STOPWORD;
+                if (!stopAutomatically)
+                    while (newCharIdx != iter.STOPWORD)
+                        newCharIdx = sampleFromDistribution(outputProbDistribution, rng);
+                if (stopAutomatically && newCharIdx == iter.STOPWORD)
                     continueBuilding[s] = false;
+                currCharIdx[s] = newCharIdx;
                 if (continueBuilding[s])
                     sb[s].append(iter.convertIndexToCharacter(currCharIdx[s]));
             }
@@ -172,8 +177,8 @@ public class SampleGeneratorListener implements IterationListener {
 
     public static void main(String[] args) throws Exception {
         System.out.println("ARGS: " + args.length);
-        int rngSeed = 74756840;
-        Random rng = new Random(rngSeed);
+//        int rngSeed = 74756840;
+        Random rng = new Random();
         double temperature = 16;
 
         String SEP = FileSystems.getDefault().getSeparator();
@@ -210,8 +215,8 @@ public class SampleGeneratorListener implements IterationListener {
             }
             System.out.println("Total number of network parameters: " + totalNumParams);
 
-            int nbSamples = 10;
-            for (int styleIndex = 0; styleIndex < 5; styleIndex++) {
+            int nbSamples = 2;
+            for (int styleIndex = 2; styleIndex <= 2; styleIndex++) {
                 for (int rating = 1; rating <= 5; rating++) {
                     System.out.println("Generating " + nbSamples + " of a " + rating + " star " + styleIndex);
                     System.out.println("--------------------");

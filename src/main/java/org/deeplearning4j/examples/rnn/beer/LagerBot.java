@@ -34,7 +34,7 @@ public class LagerBot {
 	BeerReviewCharacterIterator iter = null;
 	MultiLayerNetwork net = null;
 	Random rng = new Random();
-	double temperature = 16;
+	double temperature = 0;
 	
 	String pathToLSTMModel = "";
 	
@@ -68,7 +68,7 @@ public class LagerBot {
 		
 			//String gen_review = bot.generateReview();
 		
-			long minInMS = 1000 * 60 * 10;
+			long minInMS = 5 * 60 * 10;
 			System.out.println( "Bot Sleepy Time... (10 min)" );
 			Thread.sleep( minInMS );
 		}
@@ -125,11 +125,11 @@ public class LagerBot {
 	public String generateReview() {
 		
 		String review = "";
-		int rating = rng.nextInt(5) + 1;
+		int rating = rng.nextInt(5) + 1	;
 		
 		// TODO: generate review from model here DAVE
 		String[] reviews = SampleGeneratorListener.sampleBeerRatingFromNetwork(net, iter, rng, temperature, 2000, 1,
-																		rating, rating, rating, rating, rating, rating);
+																		2, rating, rating, rating, rating, rating);
 		review = reviews[0];
 		System.out.println("************************************\n");
 		
@@ -155,7 +155,7 @@ public class LagerBot {
 			
 			String replyTo = tweetsAtUs.get( x ).getUser().getScreenName();
 			
-			String replyTweet = replyTo + " " + this.generateReview();
+			String replyTweet = "@" + replyTo + " " + this.generateReview();
 			
 			this.postReview( replyTweet );
 			
