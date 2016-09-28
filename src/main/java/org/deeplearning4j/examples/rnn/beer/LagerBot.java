@@ -38,10 +38,16 @@ public class LagerBot {
 			
 			// hard coded spin loop? bad programming!
 			
+			String tweet = bot.generateReview();
+			 
+			System.out.println("Tweeting: " + tweet );
+			bot.postReview( tweet );
+			
 			
 			
 			// 1 . check for mentions
 			
+			System.out.println( "Responding to Mentions..." );
 			
 			bot.scanTimeline();
 			
