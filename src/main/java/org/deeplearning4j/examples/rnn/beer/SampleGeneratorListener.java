@@ -144,7 +144,6 @@ public class SampleGeneratorListener implements IterationListener {
                     for (int j = 0; j < outputProbDistribution.length; j++)
                         outputProbDistribution[j] /= outputSum;
                 }
-                int prevPrevCharIdx = prevCharIdx[s];
                 prevCharIdx[s] = currCharIdx[s];
                 int newCharIdx = iter.STOPWORD;
                 if (!stopAutomatically)
@@ -179,7 +178,7 @@ public class SampleGeneratorListener implements IterationListener {
         System.out.println("ARGS: " + args.length);
 //        int rngSeed = 74756840;
         Random rng = new Random();
-        double temperature = 16;
+        double temperature = 0;
 
         String SEP = FileSystems.getDefault().getSeparator();
         String dataPath = System.getenv("BEER_REVIEW_PATH");
@@ -226,7 +225,7 @@ public class SampleGeneratorListener implements IterationListener {
                     for (String review : reviews) {
                         System.out.println("SAMPLE " + ++i + ":" + review);
                     }
-                    reviews = sampleBeerRatingFromNetwork(net, trainData, rng, temperature, 2000, nbSamples / 2, rating,
+                    reviews = sampleBeerRatingFromNetwork(net, trainData, rng, temperature, 600, nbSamples / 2, rating,
                             rating, rating, rating, rating, rating);
                     for (String review : reviews) {
                         System.out.println("SAMPLE " + ++i + ":" + review);
