@@ -128,9 +128,11 @@ public class LagerBot {
 		int rating = rng.nextInt(5) + 1	;
 		
 		// TODO: generate review from model here DAVE
+		System.out.println("**********GENERATING REVIEW**********\n");
 		String[] reviews = SampleGeneratorListener.sampleBeerRatingFromNetwork(net, iter, rng, temperature, 2000, 1,
 																		2, rating, rating, rating, rating, rating);
 		review = reviews[0];
+		System.out.println("FULL REVIEW: " + review);
 		System.out.println("************************************\n");
 		
 		if (120 < review.length()) {
